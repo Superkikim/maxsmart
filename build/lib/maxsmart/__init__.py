@@ -1,0 +1,1 @@
+from .maxsmart import MaxSmart
