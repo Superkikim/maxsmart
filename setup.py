@@ -3,8 +3,8 @@ from setuptools import setup, find_packages
 setup(
     name='maxsmart',
     version='0.1.0',
-    author='Your Name',
-    author_email='your.email@example.com',
+    author='Akim Sissaoui',
+    author_email='superkikim@sissaoui.com',
     description='A Python module for operating network connected power strips',
     long_description='''A Python module for operating network connected power strips.
                         It provides functionality to turn on/off sockets, check their state, and retrieve power consumption data.''',
