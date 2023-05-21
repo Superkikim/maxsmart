@@ -1,0 +1,12 @@
+LICENSE
+README.md
+setup.py
+maxsmart/__init__.py
+maxsmart/maxsmart.py
+maxsmart.egg-info/PKG-INFO
+maxsmart.egg-info/SOURCES.txt
+maxsmart.egg-info/dependency_links.txt
+maxsmart.egg-info/requires.txt
+maxsmart.egg-info/top_level.txt
+tests/__init__.py
+tests/test_maxsmart.py
