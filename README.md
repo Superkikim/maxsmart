@@ -1,58 +1,79 @@
-# MaxSmart
+Certainly! Here's the updated version of the documentation with the correction:
 
-MaxSmart is a Python module for operating network-connected power strips. It provides functionality to turn on/off sockets, check their state, and retrieve power consumption data.
+# maxsmart
 
-## Installation
+The `maxsmart` module is designed to operate Revogi-based Max Hauri MaxSmart PowerStrips running on v1.x firmware. It enables local communication with the power strips without requiring any cloud connection or account.
 
-You can install MaxSmart via pip from PyPI:
+**Note:** If you have upgraded your MaxSmart app to version 2, it may have pushed a new firmware to your devices, rendering this module incompatible.
 
-```shell
-pip install maxsmart
-```
+## Introduction
+
+The `maxsmart` module is developed to control Max Hauri MaxSmart devices, specifically, the MaxSmart Power Station and the MaxSmart Power Plug. These are smart home devices that provide remote control and automation capabilities. Please note that these products are no longer available on the Swiss market under the Max Hauri brand and are considered end-of-life.
+
+## MaxSmart Overview
+
+The MaxSmart Power Station and Power Plug are part of the MaxSmart product line, designed for smart home applications. These devices are based on the Revogi Smart Power Strip.
+
+It's important to note that MaxSmart devices were designed to be controlled remotely over the internet using a Max Hauri cloud account. However, with the products reaching their end-of-life and the discontinuation of support for version 1.x of the cloud, there have been issues reported by users, including potential interruptions and disappearing cloud accounts. Upgrading to firmware version 2.x changes the API and removes the possibility of local control.
+
+While the `maxsmart` module has been specifically developed for Revogi-based Max Hauri MaxSmart PowerStrips, there have been some reports of potential compatibility with other brands and models. These include the Revogi Smart Power Strip, Extel Soky, and MCL DOM-PPS06I. However, compatibility with these brands and models may vary, and it's recommended to perform thorough testing to ensure proper functionality.
+
+Please keep in mind that the `maxsmart` module is primarily designed for Revogi-based Max Hauri MaxSmart PowerStrips running on v1.x firmware, and compatibility with other devices or firmware versions is not guaranteed.
+
+## MaxSmart Control
+
+MaxSmart devices can be controlled via the MaxSmart app, available on both Android and iOS, or through the MaxSmart website. However, due to potential issues with the Max Hauri cloud and the discontinuation of support for version 1.x devices, it is recommended to avoid using the cloud account and associated applications with version 1.x devices.
+
+The communication with MaxSmart devices is done through HTTP GET requests over a local network. It's important to note that this communication is unsecured and in clear text. Therefore, it is advised to use the module in a trusted network environment.
 
 ## Usage
 
-First, you need to import the MaxSmart module and create a MaxSmart object:
+To use the `maxsmart` module, follow these steps:
 
-```python
-from maxsmart import MaxSmart
+1. Import the module: `from maxsmart import MaxSmart`
+2. Create an instance of the `MaxSmart` class, providing the IP address and serial number of your PowerStrip:
 
-power_strip = MaxSmart('ip_address', 'sn')
-```
+   ```python
+   maxsmart = MaxSmart('192.168.1.1', 'test_sn')
+   ```
 
-Replace `'ip_address'` and `'sn'` with the IP address and the serial number of your power strip, respectively.
+3. Use the available methods to control the PowerStrip:
 
-Here are a few examples of how you can use the methods of the `MaxSmart` object to control your power strip:
+   - Turn on a specific port/socket:
+     ```python
+     maxsmart.turn_on(1)  # Turns on port 1
+     ```
 
-```python
-# Turn on socket 1
-power_strip.turn_on(1)
+   - Turn off a specific port/socket:
+     ```python
+     maxsmart.turn_off(2)  # Turns off port 2
+     ```
 
-# Turn off socket 1
-power_strip.turn_off(1)
+   - Check the state of all ports/sockets:
+     ```python
+     state = maxsmart.check_state()  # Returns a list with the state of each port
+     ```
 
-# Check the state of all sockets
-state = power_strip.check_state()
-print(state)  # [0, 1, 0, 1, 0, 1] for example
+   - Check the state of a specific port/socket:
+     ```python
 
-# Check the state of socket 1
-socket_state = power_strip.check_port_state(1)
-print(socket_state)  # 0 for example
 
-# Get the hourly data of socket 1
-hourly_data = power_strip.get_hourly_data(1)
-print(hourly_data)
-```
+     port_state = maxsmart.check_port_state(3)  # Returns the state of port 3
+     ```
 
-## Contributing
+   - Retrieve 24 data points of the last 24 hourly power consumption (in watt) for a specific port/socket:
+     ```python
+     port = 3  # Specify the port/socket for which to retrieve data
+     data = maxsmart.get_hourly_data(port)  # Retrieves the hourly power consumption data for the specified port
+     print(data)  # Prints the retrieved data points
+     ```
 
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+**Important:** Please note that the `maxsmart` module is specifically designed for Revogi-based Max Hauri MaxSmart PowerStrips running on v1.x firmware. Compatibility with other devices or firmware versions is not guaranteed.
 
-Please make sure to update the tests as appropriate.
+## Credits
+
+The `maxsmart` module has been made possible by the reverse engineering and documentation work done by GitHub user `@altery`. They have provided valuable insights into the communication protocol of MaxSmart PowerStrips. You can find their documentation here: [GitHub - mh-maxsmart-powerstation](https://github.com/altery/mh-maxsmart-powerstation)
 
 ## License
 
-This project is licensed under the terms of the MIT License. See the [LICENSE](LICENSE) file for details.
-```
-
-Notez que la section "License" fait référence à un fichier `LICENSE` dans le même répertoire que le fichier `README.md`. Vous pouvez cliquer sur le lien pour voir le contenu du fichier de licence. Assurez-vous de créer ce fichier et de copier le texte de la licence MIT à l'intérieur, comme je l'ai expliqué dans mon message précédent.
+[MIT](LICENSE)
