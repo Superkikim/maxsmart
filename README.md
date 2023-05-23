@@ -51,12 +51,14 @@ Before running the test script, make sure you have the following prerequisites:
 To run the test script, execute the following command in your terminal:
 
 ```bash
-python test_script.py --ip <power_strip_ip> --sn <power_strip_sn>
+python test_script.py
 ```
 
-Replace `<power_strip_ip>` with the IP address of your MaxSmart power strip and `<power_strip_sn>` with the serial number (SN) of your power strip. This information can usually be found on the power strip itself or in its documentation.
+The script will attempt to discover MaxSmart devices on the network
 
-**NOTE:** The test script will power down all devices plugged into the power strip during the test. Make sure you are aware of the potential consequences before proceeding.
+. If no devices are found, it will display an error message. If devices are found, you will be presented with a menu to select a device for testing.
+
+Follow the on-screen instructions and warnings to proceed with the test.
 
 ### Output and Example
 
@@ -65,10 +67,10 @@ The test script provides detailed output during the test execution. It displays 
 Here is an example command to run the test script:
 
 ```
-python test_script.py --ip 192.168.0.123 --sn ABC123456789
+python test_script.py
 ```
 
-This command will run the test script on a MaxSmart power strip with the specified IP address and serial number. Follow the on-screen instructions and warnings to proceed with the test.
+This command will run the test script and attempt to discover MaxSmart devices on the network. If devices are found, you will be presented with a menu to select a device for testing. Follow the on-screen instructions and warnings to proceed with the test.
 
 ## Getting started
 
@@ -116,8 +118,6 @@ To use the `maxsmart` module, follow these steps:
 
    - Check the state of a specific port/socket:
      ```python
-
-
      port_state = maxsmart.check_port_state(3)  # Returns the state of port 3
      ```
 
@@ -129,7 +129,6 @@ To use the `maxsmart` module, follow these steps:
      ```
 
 **Important:** Please note that the `maxsmart` module is specifically designed for Revogi-based Max Hauri MaxSmart PowerStrips running on v1.x firmware. Compatibility with other devices or firmware versions is not guaranteed.
-
 
 ## Credits
 

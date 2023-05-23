@@ -1,4 +1,3 @@
-import argparse
 import time
 from maxsmart import MaxSmart
 
@@ -7,6 +6,35 @@ def display_table(header, data):
     print("-" * (len(header) * 10))
     for row in data:
         print(f"{' | '.join(str(item) for item in row)}")
+
+def discover_devices():
+    print("Discovering MaxSmart devices...")
+    maxsmart = MaxSmart("", "")  # Create an instance of MaxSmart
+    devices = maxsmart.discover_maxsmart()  # Call the instance method
+    return devices
+
+
+def select_device(devices):
+    print("Available MaxSmart devices:")
+    device_menu = {}
+    for i, device in enumerate(devices, start=1):
+        sn = device["sn"]
+        name = device["name"]
+        ip = device["ip"]
+        device_menu[i] = device
+        print(f"{i}. SN: {sn}, Name: {name}, IP: {ip}")
+
+    while True:
+        choice = input("Select a device (number): ")
+        try:
+            choice = int(choice)
+            if choice in device_menu:
+                selected_device = device_menu[choice]
+                return selected_device
+            else:
+                print("Invalid choice. Please select a number from the list.")
+        except ValueError:
+            print("Invalid input. Please enter a number.")
 
 def test_powerstrip(ip, sn):
     print("WARNING: This test will power down all devices plugged into the power strip.")
@@ -58,9 +86,11 @@ def test_powerstrip(ip, sn):
     display_table(["Port", "Hourly Data"], hourly_data)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--ip", required=True, help="IP address of the powerstrip")
-    parser.add_argument("--sn", required=True, help="SN (serial number) of the powerstrip")
-    args = parser.parse_args()
-
-    test_powerstrip(args.ip, args.sn)
+    devices = discover_devices()
+    if devices:
+        selected_device = select_device(devices)
+        ip = selected_device["ip"]
+        sn = selected_device["sn"]
+        test_powerstrip(ip, sn)
+    else:
+        print("No MaxSmart devices found.")
