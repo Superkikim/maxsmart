@@ -79,7 +79,7 @@ This command will run the test script and attempt to discover MaxSmart devices o
 - Python 3.x installed on your system.
 - The `maxsmart` Python module installed. You can install it by following the instructions in the [Installation](#installation) section.
 
-### Installation {#installation}
+### Installation
 
 To install the `maxsmart` module, you can use `pip`, the Python package installer. Open your terminal or command prompt and run the following command:
 
