@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: maxsmart
-Version: 0.1.3
+Version: 0.1.4
 Summary: A Python module for operating network connected power strips
 Home-page: https://github.com/superkikim/maxsmart
 Author: Akim Sissaoui
