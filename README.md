@@ -79,7 +79,7 @@ This command will run the test script and attempt to discover MaxSmart devices o
 - Python 3.x installed on your system.
 - The `maxsmart` Python module installed. You can install it by following the instructions in the [Installation](#installation) section.
 
-### Installation {#installation}
+### Installation
 
 To install the `maxsmart` module, you can use `pip`, the Python package installer. Open your terminal or command prompt and run the following command:
 
@@ -121,13 +121,16 @@ To use the `maxsmart` module, follow these steps:
      port_state = maxsmart.check_port_state(3)  # Returns the state of port 3
      ```
 
-   - Retrieve 24 data points of the last 24 hourly power consumption (in watt) for a specific port/socket:
-     ```python
-     port = 3  # Specify the port/socket for which to retrieve data
-     data = maxsmart.get_hourly_data(port)  # Retrieves the hourly power consumption data for the specified port
-     print(data)  # Prints the retrieved data points
-     ```
+    - Retrieve real time power consumption data for a specific port/socket (amps and watts):
+      ```python
+      power_data = maxsmart.get_power_data(3)   # Get the power data for the specified port
+      ```
 
+    - Retrieve 24 hours points of consumption data for a specific port/socket:
+      ```python
+      hourly_data = maxsmart.get_hourly_data(3)  # Get the last 24 points of hourly consumption data for specified port
+      ```
+     
 **Important:** Please note that the `maxsmart` module is specifically designed for Revogi-based Max Hauri MaxSmart PowerStrips running on v1.x firmware. Compatibility with other devices or firmware versions is not guaranteed.
 
 ## Credits
