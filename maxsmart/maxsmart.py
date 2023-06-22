@@ -35,18 +35,22 @@ class MaxSmartDiscovery:
                         sn = device_data.get("sn")
                         name = device_data.get("name")
                         pname = device_data.get("pname")
+                        ver = device_data.get("ver")
 
                         maxsmart_device = {
                             "sn": sn,
                             "name": name,
                             "pname": pname,
-                            "ip": ip_address
+                            "ip": ip_address,
+                            "ver": ver
                         }
 
                         maxsmart_devices.append(maxsmart_device)
 
                 except socket.timeout:
                     break
+
+        MaxSmartDiscovery._validate_firmware_versions(maxsmart_devices)
 
         return maxsmart_devices
 
@@ -57,6 +61,13 @@ class MaxSmartDiscovery:
         json_str = json_str.replace("False", '"False"')
         json_str = json_str.replace("True", '"True"')
         return json_str
+
+    @staticmethod
+    def _validate_firmware_versions(devices):
+        for device in devices:
+            firmware_version = device.get('ver')
+            if firmware_version != '1.30':
+                raise IncompatibleFirmwareError(f"Device with IP {device['ip']} has firmware version {firmware_version}. This module has been tested with MaxSmart devices with firmware version 1.30.")
 
 class MaxSmartDevice:
     def __init__(self, ip):
