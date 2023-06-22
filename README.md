@@ -91,13 +91,11 @@ devices = MaxSmartDiscovery.discover_maxsmart(192.168.0.25)
 
 The `discover_maxsmart` method returns a list of dictionaries, each representing a discovered MaxSmart device on the network. Each dictionary contains information such as the device's IP address (ip), serial number (sn), name, port name dictonary (pname), firmware version (ver).
 
-### Operations
+### Device Operations
 
 When you have the ip addresses of your devices, you can operate using the MaxSmartDevice method:
 
-### Device Operations
-
-To control a MaxSmart device, follow these steps:
+The MaxSmart Power strip as 6 ports, and the Smart plug has 1 port. Operations are made against port numbers.
 
 1. Import the module and create an instance of the `MaxSmartDevice` class, providing the IP address of the device. For example:
 
@@ -107,11 +105,16 @@ To control a MaxSmart device, follow these steps:
    device = MaxSmartDevice(192.168.0.25)
    ```
 
-2. Use the available methods to control the device:
+2. Use the available methods to control the device. Note that port 0 is a master port affecting all ports on the device simultaneously:
 
    - Turn on a specific port/socket:
      ```python
      device.turn_on(1)  # Turns on port 1
+     ```
+
+   - Turn on all ports/sockets:
+     ```python
+     device.turn_on(0)  # Turns on all ports
      ```
 
    - Turn off a specific port/socket:
