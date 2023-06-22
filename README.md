@@ -51,35 +51,14 @@ Before running the test script, make sure you have the following prerequisites:
 To run the test script, execute the following command in your terminal:
 
 ```bash
-python test_script.py
+python test_scripts/test_script.py
 ```
 
-The script will attempt to discover MaxSmart devices on the network
-
-. If no devices are found, it will display an error message. If devices are found, you will be presented with a menu to select a device for testing.
+The script will attempt to discover MaxSmart devices on the network. If no devices are found, it will display an error message. If devices are found, you will be presented with a menu to select a device for testing.
 
 Follow the on-screen instructions and warnings to proceed with the test.
 
-### Output and Example
-
-The test script provides detailed output during the test execution. It displays the status of each action, countdown during the waiting periods, and the retrieved consumption data in tabular format.
-
-Here is an example command to run the test script:
-
-```
-python test_script.py
-```
-
-This command will run the test script and attempt to discover MaxSmart devices on the network. If devices are found, you will be presented with a menu to select a device for testing. Follow the on-screen instructions and warnings to proceed with the test.
-
-## Getting started
-
-### Prerequisites
-
-- Python 3.x installed on your system.
-- The `maxsmart` Python module installed. You can install it by following the instructions in the [Installation](#installation) section.
-
-### Installation
+## Installation
 
 To install the `maxsmart` module, you can use `pip`, the Python package installer. Open your terminal or command prompt and run the following command:
 
@@ -88,50 +67,79 @@ pip install maxsmart
 ```
 This will install the `maxsmart` module and its dependencies.
 
-### Usage
+## Usage
 
-To use the `maxsmart` module, follow these steps:
+### Discovery 
 
-1. Import the module: `from maxsmart import MaxSmart`
-2. Create an instance of the `MaxSmart` class, providing the IP address and serial number of your PowerStrip:
+Discovery will help you find your MaxSmart device details on the local network. You can use the `MaxSmartDiscovery` class. There are two ways of using this class: 
+
+Without argument, MaxSmartDiscovery will send a broadcast to the local network and expect all available devices to send data in return.
+
+```python
+from maxsmart import MaxSmartDiscovery
+devices = MaxSmartDiscovery.discover_maxsmart()
+```
+
+**Note:** If broadcast is blocked on your network, you will not get any result.
+
+With an ip address as argument, MaxSmartDiscovery will send a unicast message to the specified IP address. In that case, only that specific device, if present, will return data. You'll have therefore to run discovery for each specific MaxSmart device.
+
+```python
+from maxsmart import MaxSmartDiscovery
+devices = MaxSmartDiscovery.discover_maxsmart(192.168.0.25)
+```
+
+The `discover_maxsmart` method returns a list of dictionaries, each representing a discovered MaxSmart device on the network. Each dictionary contains information such as the device's IP address (ip), serial number (sn), name, port name dictonary (pname), firmware version (ver).
+
+### Operations
+
+When you have the ip addresses of your devices, you can operate using the MaxSmartDevice method:
+
+### Device Operations
+
+To control a MaxSmart device, follow these steps:
+
+1. Import the module and create an instance of the `MaxSmartDevice` class, providing the IP address of the device. For example:
 
    ```python
-   maxsmart = MaxSmart('192.168.1.1', 'test_sn')
+   from maxsmart import MaxSmartDevice
+
+   device = MaxSmartDevice(192.168.0.25)
    ```
 
-3. Use the available methods to control the PowerStrip:
+2. Use the available methods to control the device:
 
    - Turn on a specific port/socket:
      ```python
-     maxsmart.turn_on(1)  # Turns on port 1
+     device.turn_on(1)  # Turns on port 1
      ```
 
    - Turn off a specific port/socket:
      ```python
-     maxsmart.turn_off(2)  # Turns off port 2
+     device.turn_off(2)  # Turns off port 2
      ```
 
    - Check the state of all ports/sockets:
      ```python
-     state = maxsmart.check_state()  # Returns a list with the state of each port
+     state = device.check_state()  # Returns a list with the state of each port
      ```
 
    - Check the state of a specific port/socket:
      ```python
-     port_state = maxsmart.check_port_state(3)  # Returns the state of port 3
+     port_state = device.check_port_state(3)  # Returns the state of port 3
      ```
 
-    - Retrieve real time power consumption data for a specific port/socket (amps and watts):
-      ```python
-      power_data = maxsmart.get_power_data(3)   # Get the power data for the specified port
-      ```
+   - Retrieve real-time power consumption data for a specific port/socket (watts):
+     ```python
+     power_data = device.get_power_data(3)   # Get the power data for the specified port
+     ```
 
-    - Retrieve 24 hours points of consumption data for a specific port/socket:
-      ```python
-      hourly_data = maxsmart.get_hourly_data(3)  # Get the last 24 points of hourly consumption data for specified port
-      ```
-     
-**Important:** Please note that the `maxsmart` module is specifically designed for Revogi-based Max Hauri MaxSmart PowerStrips running on v1.x firmware. Compatibility with other devices or firmware versions is not guaranteed.
+   - Retrieve 24-hour points of consumption data for a specific port/socket (kWh):
+     ```python
+     hourly_data = device.get_hourly_data(3)  # Get the last 24 points of hourly consumption data for the specified port
+     ```
+
+**DISCLAIMER:** Please note that the `MaxSmartDevice` class is specifically designed for Revogi-based Max Hauri MaxSmart PowerStrips running on v1.30 firmware. Compatibility with other devices or firmware versions is not guaranteed.
 
 ## Credits
 
