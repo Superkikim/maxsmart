@@ -1,8 +1,14 @@
-from maxsmart import MaxSmart
+from maxsmart import MaxSmartDiscovery, MaxSmartDevice
+
+def display_table(header, data):
+    print(f"{' | '.join(header)}")
+    print("-" * (len(header) * 10))
+    for row in data:
+        print(f"{' | '.join(str(item) for item in row)}")
 
 def main():
     # Discover MaxSmart devices
-    devices = MaxSmart.discover_maxsmart()
+    devices = MaxSmartDiscovery.discover_maxsmart()
     
     if devices:
         # Select the Cuisine strip
@@ -14,10 +20,9 @@ def main():
         
         if cuisine_strip:
             ip = cuisine_strip["ip"]
-            sn = cuisine_strip["sn"]
             
             # Create MaxSmart object for the Cuisine strip
-            cuisine_maxsmart = MaxSmart(ip, sn)
+            cuisine_maxsmart = MaxSmartDevice(ip)
             
             # Get the example outputs
             state_output = cuisine_maxsmart.check_state()
@@ -31,6 +36,14 @@ def main():
             
             print(f"\nExample output for check_port_state({port}):")
             print(port_state_output)
+
+            print("Retrieving real-time consumption data...")
+            consumption_data = []
+            for port in range(1, 7):
+                power_data = cuisine_maxsmart.get_power_data(port)
+                consumption_data.append([f"Port {port}", power_data["watt"]])
+            display_table(["Port", "Watt"], consumption_data)
+
         else:
             print("Cuisine strip not found.")
     else:

@@ -1,9 +1,10 @@
-#!/bin/env python3
-from maxsmart import MaxSmart
+#!/usr/bin/env python3
+from maxsmart import MaxSmartDiscovery, MaxSmartDevice
 
 def main():
     # Discover MaxSmart devices
-    devices = MaxSmart.discover_maxsmart()
+    discovery = MaxSmartDiscovery()
+    devices = discovery.discover_maxsmart()
     print(devices)
     
     if devices:
@@ -16,10 +17,9 @@ def main():
         
         if cuisine_strip:
             ip = cuisine_strip["ip"]
-            sn = cuisine_strip["sn"]
             
-            # Create MaxSmart object for the Cuisine strip
-            cuisine_maxsmart = MaxSmart(ip, sn)
+            # Create MaxSmartDevice object for the Cuisine strip
+            cuisine_maxsmart = MaxSmartDevice(ip)
             
             # Retrieve the state for all ports
             port_states = []

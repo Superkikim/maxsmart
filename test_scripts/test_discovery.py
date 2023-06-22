@@ -1,9 +1,9 @@
-from maxsmart import MaxSmart  # Import the MaxSmart class from the maxsmart module
+from maxsmart import MaxSmartDiscovery  # Import the MaxSmartDiscovery class from the maxsmart module
 
 def discover_devices(ip=None):
     print("Discovering MaxSmart devices...")
-    maxsmart = MaxSmart("","")  # Create an instance of MaxSmart
-    devices = maxsmart.discover_maxsmart(ip)  # Call the instance method
+    discovery = MaxSmartDiscovery()  # Create an instance of MaxSmartDiscovery
+    devices = discovery.discover_maxsmart(ip)  # Call the instance method
     return devices
 
 def main():
@@ -12,4 +12,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
