@@ -26,8 +26,7 @@ class MaxSmartDiscovery:
                     data, addr = sock.recvfrom(1024)
                     raw_result = data.decode()
 
-                    preprocessed_result = MaxSmartDiscovery._preprocess_json_string(raw_result)
-                    json_data = json.loads(preprocessed_result)
+                    json_data = json.loads(raw_result)
                     ip_address = addr[0]
                     device_data = json_data.get("data")
 
@@ -53,14 +52,6 @@ class MaxSmartDiscovery:
         MaxSmartDiscovery._validate_firmware_versions(maxsmart_devices)
 
         return maxsmart_devices
-
-    @staticmethod
-    def _preprocess_json_string(json_str):
-        json_str = json_str.strip()
-        json_str = json_str.replace("'", '"')
-        json_str = json_str.replace("False", '"False"')
-        json_str = json_str.replace("True", '"True"')
-        return json_str
 
     @staticmethod
     def _validate_firmware_versions(devices):
