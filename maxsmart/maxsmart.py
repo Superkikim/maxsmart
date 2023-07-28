@@ -49,7 +49,7 @@ class MaxSmartDiscovery:
                 except socket.timeout:
                     break
 
-        MaxSmartDiscovery._validate_firmware_versions(maxsmart_devices)
+#        MaxSmartDiscovery._validate_firmware_versions(maxsmart_devices)
 
         return maxsmart_devices
 
