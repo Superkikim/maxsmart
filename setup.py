@@ -1,13 +1,16 @@
 from setuptools import setup, find_packages
 
+with open("README.md", "r", encoding="utf-8") as fh:
+    long_description = fh.read()
+
 setup(
     name='maxsmart',
     version='0.2.0',
     author='Akim Sissaoui',
     author_email='superkikim@sissaoui.com',
     description='A Python module for operating network connected power strips',
-    long_description='''A Python module for operating network connected power strips.
-                        It provides functionality to turn on/off sockets, check their state, and retrieve power consumption data.''',
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     url='https://github.com/superkikim/maxsmart',
     packages=find_packages(),
     install_requires=[
