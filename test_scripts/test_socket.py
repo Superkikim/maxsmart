@@ -15,6 +15,10 @@ while True:
     try:
         data, addr = sock.recvfrom(1024)
         raw_result = data.decode()
+
+        # Extract and print the source IP address
+        source_ip = addr[0]
+        print("Source IP:", source_ip)
         print("Raw Result:", raw_result)
     except socket.timeout:
         print("Socket timeout occurred.")

@@ -3,6 +3,7 @@ from maxsmart import MaxSmartDiscovery  # Import the MaxSmartDiscovery class fro
 def discover_devices(ip=None):
     print("Discovering MaxSmart devices...")
     discovery = MaxSmartDiscovery()  # Create an instance of MaxSmartDiscovery
+    ip = "255.255.255.255"
     devices = discovery.discover_maxsmart(ip)  # Call the instance method
     return devices
 

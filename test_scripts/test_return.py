@@ -29,7 +29,7 @@ def main():
             
             # Retrieve the state of the strip
             strip_state = cuisine_maxsmart.check_state()
-            
+            print(strip_state)
             # Display the results
             print("Port states:")
             for port, state in port_states:

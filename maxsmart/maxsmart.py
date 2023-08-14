@@ -113,6 +113,17 @@ class MaxSmartDevice:
         else:
             self._verify_port_state(port, 0)
 
+    def get_data(self):
+        response = self._send_command(511)
+        state = response.get('data', {}).get('switch', [])
+        wattage = response.get('data', {}).get('watt', [])
+        
+        if state is None or wattage is None:
+            raise Exception(f"Error: 'switch' or 'watt' data not found in response from power strip")
+        
+        return {"switch": state, "watt": wattage}
+
+
     def check_state(self):
         response = self._send_command(511)
         state = response.get('data', {}).get('switch', [])
