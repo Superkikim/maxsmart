@@ -5,19 +5,19 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name='maxsmart',
-    version='0.2.0',
+    version='2.0.0-alpha.1',
     author='Akim Sissaoui',
     author_email='superkikim@sissaoui.com',
     description='A Python module for operating network connected power strips',
     long_description=long_description,
     long_description_content_type="text/markdown",
     url='https://github.com/superkikim/maxsmart',
-    packages=find_packages(),
+    packages=find_packages(),  # Automatically find packages
     install_requires=[
         'requests',
     ],
     classifiers=[
-        'Development Status :: 5 - Production/Stable',
+        'Development Status :: 3 - Alpha',  # Change to 5 - Production/Stable when you are ready
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3',
@@ -25,5 +25,7 @@ setup(
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
     ],
+    python_requires='>=3.6',  # Optional: Specify compatible Python versions
 )
