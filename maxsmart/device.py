@@ -1,68 +1,15 @@
+# device.py
+
 import requests
 import json
 import time
-import socket
-import datetime
-
-class MaxSmartDiscovery:
-    @staticmethod
-    def discover_maxsmart(ip=None):
-        maxsmart_devices = []
-
-        message = f"00dv=all,{datetime.datetime.now().strftime('%Y-%m-%d,%H:%M:%S')};"
-
-        if ip is None:
-            target_ip = '255.255.255.255'
-        else:
-            target_ip = ip
-
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-            sock.sendto(message.encode(), (target_ip, 8888))
-            sock.settimeout(5)
-
-            while True:
-                try:
-                    data, addr = sock.recvfrom(1024)
-                    raw_result = data.decode()
-
-                    json_data = json.loads(raw_result)
-                    ip_address = addr[0]
-                    device_data = json_data.get("data")
-
-                    if device_data:
-                        sn = device_data.get("sn")
-                        name = device_data.get("name")
-                        pname = device_data.get("pname")
-                        ver = device_data.get("ver")
-
-                        maxsmart_device = {
-                            "sn": sn,
-                            "name": name,
-                            "pname": pname,
-                            "ip": ip_address,
-                            "ver": ver
-                        }
-
-                        maxsmart_devices.append(maxsmart_device)
-
-                except socket.timeout:
-                    break
-
-#        MaxSmartDiscovery._validate_firmware_versions(maxsmart_devices)
-
-        return maxsmart_devices
-
-    @staticmethod
-    def _validate_firmware_versions(devices):
-        for device in devices:
-            firmware_version = device.get('ver')
-            if firmware_version != '1.30':
-                raise ValueError(f"Device with IP {device['ip']} has firmware version {firmware_version}. This module has been tested with MaxSmart devices with firmware version 1.30.")
+import logging
 
 class MaxSmartDevice:
     def __init__(self, ip):
         self.ip = ip
+        self.strip_name = "Strip"  # Default strip name
+        self.port_names = [f"Port {i}" for i in range(1, 7)]  # Default port names
 
     def _send_command(self, cmd, params=None):
         url = f"http://{self.ip}/?cmd={cmd}"
@@ -162,3 +109,31 @@ class MaxSmartDevice:
             return {"watt": watt[port - 1]}
         else:
             return None
+        
+    def retrieve_port_names(self):
+        """Retrieve current port names by sending a discovery request."""
+        if not self.ip:
+            raise ValueError("IP address must be set before retrieving port names.")
+
+        from maxsmart import MaxSmartDiscovery
+
+        discovery = MaxSmartDiscovery()
+        devices = discovery.discover_maxsmart(ip=self.ip)
+
+        # If no devices were found, raise an exception
+        if not devices:
+            raise Exception(f"No devices found with IP: {self.ip}")
+
+        # Assuming there is only one device returned for the given IP
+        device = devices[0]  # Access the first (and only) device
+        self.strip_name = device.get('name', self.strip_name)  # Name for port 0
+        self.port_names = device.get('pname', self.port_names)  # Names for ports 1 to 6
+
+        # Combine in a dictionary
+        port_mapping = {
+            "Port 0": self.strip_name,
+        }
+        for i in range(1, 7):
+            port_mapping[f"Port {i}"] = self.port_names[i - 1] if i - 1 < len(self.port_names) else f"Port {i}"
+
+        return port_mapping  # Return the dictionary
