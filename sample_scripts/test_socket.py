@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import socket
 import datetime
 
@@ -9,7 +10,7 @@ target_port = 8888
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 sock.sendto(message.encode(), (target_ip, target_port))
-sock.settimeout(5)
+sock.settimeout(2)
 
 while True:
     try:
