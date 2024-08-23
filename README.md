@@ -125,19 +125,15 @@ else:
     print("No MaxSmart devices found.")
 ```
 
-## Test Script
+## Sample Scripts
 
-The test script provided allows you to perform a series of tests on a MaxSmart power strip. It covers various functionalities such as powering on and off individual ports, retrieving real-time consumption data, and obtaining 24-hour consumption data.
+The [Sample Scripts](sample_scripts) provided allows you to perform a series of tests on a MaxSmart power strip. They are also meant as a guideline for you to create your own scripts or integration.
 
-### Running the Test Script
+They cover various functionalities such as powering on and off individual ports, retrieving real-time consumption data, and obtaining 24-hour consumption data, etc...
 
-To run a test script, execute the following command in your terminal:
+### Running the Sample Scripts
 
-```bash
-python test_scripts/test_script.py
-```
-
-The script will attempt to discover MaxSmart devices on the network. If no devices are found, it will display an error message. If devices are found, you will be presented with a menu to select a device for testing. Follow the on-screen instructions and warnings to proceed with the test.
+Refer to the [Sample Scripts Readme](sample_scripts/README.md) for instructions on how to run the scripts.
 
 ## Credits
 
