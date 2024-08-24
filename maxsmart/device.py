@@ -3,7 +3,7 @@
 import requests
 import json
 import time
-from .exceptions import DiscoveryError, ConnectionError, StateError
+from .exceptions import DiscoveryError, ConnectionError, StateError, CommandError
 
 class MaxSmartDevice:
     def __init__(self, ip):
@@ -193,3 +193,47 @@ class MaxSmartDevice:
             raise DiscoveryError(f"Error during device discovery: {str(e)}")
         except Exception as e:
             raise StateError(f"Unexpected error retrieving port names: {str(e)}")
+
+    def change_port_name(self, port, new_name):
+        """
+        Change the name of a specific port.
+
+        Args:
+        port (int): The port number (0-6) to change the name for.
+        new_name (str): The new name for the port (max 21 characters).
+
+        Raises:
+        StateError: If the port number is invalid, the new name is empty, or the new name is too long.
+        CommandError: If there's an error sending the command to the device.
+        """
+        if not 0 <= port <= 6:
+            raise StateError(f"Invalid port number: {port}. Must be between 0 and 6.")
+        
+        if not new_name or new_name.strip() == "":
+            raise StateError("Port name cannot be empty.")
+
+        if len(new_name) > 21:
+            raise StateError(f"Port name '{new_name}' is too long. Maximum length is 21 characters.")
+
+        try:
+            params = {
+                "port": port,
+                "name": new_name
+            }
+            response = self._send_command(201, params)
+            
+            # Check if the command was successful
+            if response.get('code') == 200:
+                # Update the local port name storage
+                if port == 0:
+                    self.strip_name = new_name
+                else:
+                    self.port_names[port - 1] = new_name
+                return True
+            else:
+                raise CommandError(f"Failed to change port name. Device returned unexpected code: {response.get('code')}")
+
+        except CommandError as e:
+            raise CommandError(f"Error changing port name: {str(e)}")
+        except Exception as e:
+            raise StateError(f"Unexpected error occurred while changing port name: {str(e)}")
