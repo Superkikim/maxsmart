@@ -3,12 +3,24 @@
 
 import sys
 from maxsmart import MaxSmartDiscovery, MaxSmartDevice
+from maxsmart.exceptions import DiscoveryError, ConnectionError  # Import the custom exceptions
 
 def discover_devices():
     """Discover MaxSmart devices and return a list of devices."""
-    discovery = MaxSmartDiscovery()  # Create a MaxSmartDiscovery instance
-    devices = discovery.discover_maxsmart()  # Discover devices
-    return devices  # Return the list of discovered devices
+    print("Discovering MaxSmart devices...")
+    try:
+        discovery = MaxSmartDiscovery()  # Create a MaxSmartDiscovery instance
+        devices = discovery.discover_maxsmart()  # Discover devices
+        return devices  # Return the list of discovered devices
+    except ConnectionError as ce:
+        print(f"Connection error occurred during device discovery: {ce}")
+        return []  # Return an empty list if discovery fails
+    except DiscoveryError as de:
+        print(f"Discovery error occurred: {de}")
+        return []  # Return an empty list if there was a discovery issue
+    except Exception as e:
+        print(f"An unexpected error occurred during device discovery: {e}")
+        return []  # Return an empty list if an unexpected error occurs
 
 def select_device(devices):
     """Prompt the user to select a device from the discovered devices."""
@@ -29,21 +41,21 @@ def select_device(devices):
         return None
 
 def main():
+    """Main function to execute the device selection process and retrieve port names."""
     # Discover devices
     devices = discover_devices()
-
+    
     # Check if any devices were found
     if not devices:
         print("No MaxSmart devices found.")
         return
-
+    
     # Select a device
     selected_device = select_device(devices)
     
     if selected_device:
         ip = selected_device["ip"]  # Get the IP address of the selected device
-        # Create an instance of MaxSmartDevice
-        device = MaxSmartDevice(ip=ip)
+        device = MaxSmartDevice(ip=ip)  # Create an instance of MaxSmartDevice
         
         # Retrieve the current port names
         try:
