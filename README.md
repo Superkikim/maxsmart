@@ -1,6 +1,6 @@
 # MaxSmart Python Module
 
-**Version:** 2.0.0-beta1
+**Version:** 2.0.0-beta2
 
 The `maxsmart` module is designed to operate Revogi-based Max Hauri MaxSmart PowerStrips running on v1.x firmware. It enables local communication with the power strips without requiring any cloud connection or account.
 
