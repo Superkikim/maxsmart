@@ -125,15 +125,15 @@ else:
     print("No MaxSmart devices found.")
 ```
 
-## Sample Scripts
+## Example Scripts
 
-The [Sample Scripts](sample_scripts) provided allows you to perform a series of tests on a MaxSmart power strip. They are also meant as a guideline for you to create your own scripts or integration.
+The [Example Scripts](example_scripts/) directory provided allows you to perform a series of tests on a MaxSmart power strip. They are also meant as a guideline for you to create your own scripts or integration.
 
 They cover various functionalities such as powering on and off individual ports, retrieving real-time consumption data, and obtaining 24-hour consumption data, etc...
 
-### Running the Sample Scripts
+### Running the example Scripts
 
-Refer to the [Sample Scripts Readme](sample_scripts/README.md) for instructions on how to run the scripts.
+Refer to the [example Scripts Readme](example_scripts/README.md) for instructions on how to run the scripts.
 
 ## Credits
 

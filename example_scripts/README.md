@@ -1,6 +1,6 @@
-# MaxSmart Sample Scripts
+# MaxSmart example Scripts
 
-This folder contains sample scripts designed to demonstrate how to use the `maxsmart` Python module to interact with MaxSmart devices. These scripts illustrate various functionalities, showing users how to integrate and control their devices in their own projects.
+This folder contains example scripts designed to demonstrate how to use the `maxsmart` Python module to interact with MaxSmart devices. These scripts illustrate various functionalities, showing users how to integrate and control their devices in their own projects.
 
 ## Overview of Scripts
 
@@ -47,4 +47,4 @@ This folder contains sample scripts designed to demonstrate how to use the `maxs
 
 ## Conclusion
 
-These sample scripts serve as a starting point for users interested in integrating MaxSmart devices into their automation projects or personal applications. Whether you're looking to control devices, monitor their states, or discover new hardware, these scripts illustrate practical use cases for the `maxsmart` module.
+These example scripts serve as a starting point for users interested in integrating MaxSmart devices into their automation projects or personal applications. Whether you're looking to control devices, monitor their states, or discover new hardware, these scripts illustrate practical use cases for the `maxsmart` module.
