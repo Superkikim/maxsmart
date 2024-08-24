@@ -28,4 +28,6 @@ setup(
         'Programming Language :: Python :: 3.10',
     ],
     python_requires='>=3.6',  # Optional: Specify compatible Python versions
+    license='MIT',  # Specify the license type
 )
+
