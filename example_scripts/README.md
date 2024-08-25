@@ -10,29 +10,29 @@ This folder contains example scripts designed to demonstrate how to use the `max
    - **Purpose:** Ideal for users wanting to understand how to perform basic control functions on specific ports of a MaxSmart device.
    - **Usage of `maxsmart` Module:** Utilizes the `MaxSmartDiscovery` class for discovering devices and the `MaxSmartDevice` class for controlling ports and retrieving power data.
 
-2. **`get_port_names.py`**
-
-   - **Use Case:** This script discovers MaxSmart devices on the network and fetches the names of their ports, allowing users to easily identify which devices and ports are available.
-   - **Purpose:** Useful for users who need to understand the configuration of their MaxSmart devices before implementing actions in their scripts.
-   - **Usage of `maxsmart` Module:** Leverages `MaxSmartDiscovery` for discovering devices and `MaxSmartDevice` to retrieve port names.
-
-3. **`retrieve_states.py`**
-
-   - **Use Case:** This script allows users to specify a strip name and retrieve the state of the ports for that device, showing whether they are on or off.
-   - **Purpose:** Perfect for users needing to monitor the current state of their devices and ports programmatically.
-   - **Usage of `maxsmart` Module:** Uses the `MaxSmartDiscovery` class to find devices and `MaxSmartDevice` to check the state of individual ports.
-
-4. **`test_discovery.py`**
+2. **`test_discovery.py`**
 
    - **Use Case:** This script demonstrates the device discovery feature of the `maxsmart` module by finding and printing a list of discovered devices on the network.
    - **Purpose:** Great for users who want to confirm the connectivity and availability of their MaxSmart devices.
    - **Usage of `maxsmart` Module:** Primarily utilizes the `MaxSmartDiscovery` class for device discovery.
 
-5. **`test_socket.py`**
+3. **`get_port_names.py`**
 
-   - **Use Case:** This script sends a UDP broadcast message to discover MaxSmart devices, useful for scenarios where users want to implement custom networking solutions.
-   - **Purpose:** Beneficial for advanced users wanting to dive into network-level interactions with their devices.
-   - **Usage of `maxsmart` Module:** While it doesn't directly use high-level `maxsmart` module classes, it demonstrates how to discover devices via UDP broadcasting, complementing the functionalities provided by `MaxSmartDiscovery`.
+   - **Use Case:** This script discovers MaxSmart devices on the network and fetches the names of their ports, allowing users to easily identify which devices and ports are available.
+   - **Purpose:** Useful for users who need to understand the configuration of their MaxSmart devices before implementing actions in their scripts.
+   - **Usage of `maxsmart` Module:** Leverages `MaxSmartDiscovery` for discovering devices and `MaxSmartDevice` to retrieve port names.
+
+4. **`retrieve_states.py`**
+
+   - **Use Case:** This script allows users to specify a strip name and retrieve the state of the ports for that device, showing whether they are on or off.
+   - **Purpose:** Perfect for users needing to monitor the current state of their devices and ports programmatically.
+   - **Usage of `maxsmart` Module:** Uses the `MaxSmartDiscovery` class to find devices and `MaxSmartDevice` to check the state of individual ports.
+
+5. **`show_consumption.py`**
+
+   - **Use Case:** This script discovers MaxSmart devices on the network and allows users to select a device, then retrieves and displays the real-time power consumption data for each port.
+   - **Purpose:** Useful for users wanting to monitor the power usage of their MaxSmart devices and ensure they are functioning as expected.
+   - **Usage of `maxsmart` Module:** Utilizes `MaxSmartDiscovery` for discovering devices and `MaxSmartDevice` to access power data for each port.
 
 6. **`rename_ports.py`**
    - **Use Case:** Allows users to rename the strip and individual port names while validating the input length. If the name exceeds 21 characters or is empty, the user is prompted to fix or ignore the change.
