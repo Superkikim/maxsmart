@@ -50,6 +50,16 @@ Before using the `maxsmart` module, make sure you have the following prerequisit
 
 ## Installation
 
+### Install from PyPI (Pre-release)
+
+You can install the maxsmart module along with its dependencies directly from PyPI using the following command:
+
+```
+pip install --pre maxsmart
+```
+
+This command will install the latest pre-release version of the maxsmart module along with any required dependencies.
+
 ### Install from Source (Local)
 
 Since the `maxsmart` module is not yet published on PyPI, you can install it locally from the source code. Follow these steps:
