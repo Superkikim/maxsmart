@@ -29,6 +29,7 @@ This class is used to interact with a specific MaxSmart device. It allows you to
 - **`get_power_data(port)`**: Retrieves real-time power consumption data for a specific port.
 - **`get_hourly_data(port)`**: Retrieves 24-hour consumption data for a specific port.
 - **`retrieve_port_names()`**: Retrieves and returns the names of the ports on the device.
+- **`change_port_name(port, new_name)`**: Changes the name of a specified port (0 for the strip name, 1-6 for individual ports). The `new_name` must be a string no longer than 21 characters. An error is raised if the firmware version is not 1.30 or if the name is empty.
 
 ### 2. `MaxSmartDiscovery`
 
