@@ -59,6 +59,12 @@ This folder contains example scripts designed to demonstrate how to use the `max
    ./script_name.py
    ```
 
+   if you don't want to give execute permissions, you can run the scripts using:
+
+   ```
+   python script_name.py
+   ```
+
 3. **Customizing Scripts:** Feel free to modify and extend these scripts based on your unique requirements. The provided examples serve as a foundation for building more complex interactions with your MaxSmart devices.
 
 ## Conclusion
