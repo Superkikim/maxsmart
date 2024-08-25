@@ -1,4 +1,4 @@
-# MaxSmart example Scripts
+# MaxSmart Example Scripts
 
 This folder contains example scripts designed to demonstrate how to use the `maxsmart` Python module to interact with MaxSmart devices. These scripts illustrate various functionalities, showing users how to integrate and control their devices in their own projects.
 
@@ -29,19 +29,35 @@ This folder contains example scripts designed to demonstrate how to use the `max
    - **Usage of `maxsmart` Module:** Primarily utilizes the `MaxSmartDiscovery` class for device discovery.
 
 5. **`test_socket.py`**
+
    - **Use Case:** This script sends a UDP broadcast message to discover MaxSmart devices, useful for scenarios where users want to implement custom networking solutions.
    - **Purpose:** Beneficial for advanced users wanting to dive into network-level interactions with their devices.
    - **Usage of `maxsmart` Module:** While it doesn't directly use high-level `maxsmart` module classes, it demonstrates how to discover devices via UDP broadcasting, complementing the functionalities provided by `MaxSmartDiscovery`.
 
+6. **`rename_ports.py`**
+   - **Use Case:** Allows users to rename the strip and individual port names while validating the input length. If the name exceeds 21 characters or is empty, the user is prompted to fix or ignore the change.
+   - **Purpose:** Enables customization of port names, enhancing user interaction within the Home Assistant integration.
+   - **Usage of `maxsmart` Module:** Uses the `MaxSmartDevice` class to change the port names after validation.
+
 ## Getting Started
 
 1. **Install Requirements:** Ensure that the `maxsmart` module is installed in your Python environment along with any additional dependencies. Use the following command:
-   'pip install -r requirements.txt'
+
+   ```
+   pip install -r requirements.txt
+   ```
 
 2. **Running Scripts:** Make sure to give execute permissions to the scripts if running on a Unix-like OS:
-   'chmod +x script_name.py'
+
+   ```
+   chmod +x script_name.py
+   ```
+
    And run the scripts using:
-   'python3 script_name.py'
+
+   ```
+   python3 script_name.py
+   ```
 
 3. **Customizing Scripts:** Feel free to modify and extend these scripts based on your unique requirements. The provided examples serve as a foundation for building more complex interactions with your MaxSmart devices.
 
