@@ -127,13 +127,13 @@ else:
 
 ## Example Scripts
 
-The [Example Scripts](example_scripts/) directory provided allows you to perform a series of tests on a MaxSmart power strip. They are also meant as a guideline for you to create your own scripts or integration.
+The example[Example Scripts](https://github.com/Superkikim/maxsmart/tree/release-2.0.0-beta2/example_scripts) directory provided allows you to perform a series of tests on a MaxSmart power strip. They are also meant as a guideline for you to create your own scripts or integration.
 
 They cover various functionalities such as powering on and off individual ports, retrieving real-time consumption data, and obtaining 24-hour consumption data, etc...
 
 ### Running the example Scripts
 
-Refer to the [example Scripts Readme](example_scripts/README.md) for instructions on how to run the scripts.
+Refer to the [example Scripts Readme](https://github.com/Superkikim/maxsmart/tree/release-2.0.0-beta2/example_scripts/README.md) for instructions on how to run the scripts.
 
 ## Credits
 
