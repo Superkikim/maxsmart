@@ -14,13 +14,12 @@ setup(
     url='https://github.com/superkikim/maxsmart',
     packages=find_packages(),  # Automatically find packages
     install_requires=[
-        'requests',
+        'requests', 'asyncio'
     ],
     classifiers=[
-        'Development Status :: 3 - Alpha',  # Change to 5 - Production/Stable when you are ready
+        'Development Status :: 4 - Beta',  # Change to 5 - Production/Stable when you are ready
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
-        'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',

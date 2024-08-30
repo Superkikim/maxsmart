@@ -7,66 +7,86 @@ import logging
 from .exceptions import DiscoveryError, ConnectionError, FirmwareError
 
 
+import asyncio
+import json
+import socket
+import datetime
+import logging
+
+class DiscoveryError(Exception):
+    pass
+
 class MaxSmartDiscovery:
     @staticmethod
-    def discover_maxsmart(ip=None):
+    async def discover_maxsmart(ip=None):
         maxsmart_devices = []
         message = f"00dv=all,{datetime.datetime.now().strftime('%Y-%m-%d,%H:%M:%S')};"
         target_ip = ip if ip else "255.255.255.255"
 
+        loop = asyncio.get_event_loop()
+
+        # Create a new UDP socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        sock.setblocking(False)  # Make socket non-blocking
+
         try:
-            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-                sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-                sock.sendto(message.encode(), (target_ip, 8888))
-                sock.settimeout(2)
-                
-                while True:
-                    try:
-                        data, addr = sock.recvfrom(1024)
-                        raw_result = data.decode("utf-8", errors="replace")
-                        json_data = json.loads(raw_result)
-                        ip_address = addr[0]
-                        device_data = json_data.get("data", {})
+            # Send the discovery message
+            await loop.run_in_executor(None, sock.sendto, message.encode(), (target_ip, 8888))
+            sock.settimeout(2)
 
-                        if device_data:
-                            sn = device_data.get("sn", "N/A")
-                            name = device_data.get("name", "Unknown")
-                            pname = device_data.get("pname", "N/A")
-                            ver = device_data.get("ver", "N/A")
+            while True:
+                try:
+                    # Receive responses
+                    data, addr = await loop.run_in_executor(None, sock.recvfrom, 1024)
+                    raw_result = data.decode("utf-8", errors="replace")
+                    json_data = json.loads(raw_result)
+                    ip_address = addr[0]
+                    device_data = json_data.get("data", {})
 
-                            maxsmart_device = {
-                                "sn": sn,
-                                "name": name,
-                                "pname": pname,
-                                "ip": ip_address,
-                                "ver": ver,
-                            }
-                            maxsmart_devices.append(maxsmart_device)
+                    if device_data:
+                        sn = device_data.get("sn", "N/A")
+                        name = device_data.get("name", "Unknown")
+                        pname = device_data.get("pname", "N/A")
+                        ver = device_data.get("ver", "N/A")
 
-                        # Check if a specific IP is specified to stop after the first response
-                        if ip and ip != "255.255.255.255":
-                            break  # Exit loop after receiving the first response
+                        maxsmart_device = {
+                            "sn": sn,
+                            "name": name,
+                            "pname": pname,
+                            "ip": ip_address,
+                            "ver": ver,
+                        }
+                        maxsmart_devices.append(maxsmart_device)
 
-                    except socket.timeout:
-                        if not maxsmart_devices:
-                            logging.info("No devices found during discovery. Trying again...")
-                        break  # Exit if the timeout occurs
+                    # Check if a specific IP is specified to stop after the first response
+                    if ip and ip != "255.255.255.255":
+                        break  # Exit loop after receiving the first response
 
-                    except json.JSONDecodeError:
-                        logging.error(f"Failed to decode JSON from raw result: {raw_result}")
-                        raise DiscoveryError("Received invalid JSON data.")  # Raise a custom error
+                except socket.timeout:
+                    if not maxsmart_devices:
+                        logging.info("No devices found during discovery. Trying again...")
+                    break  # Exit if the timeout occurs
 
-                    except KeyError as key_error:
-                        logging.error(f"Expected key not found in the JSON response: {key_error}")
-                        raise DiscoveryError("Missing expected data in device response.")
+                except json.JSONDecodeError:
+                    logging.error(f"Failed to decode JSON from raw result: {raw_result}")
+                    raise DiscoveryError("Received invalid JSON data.")  # Raise a custom error
+
+                except KeyError as key_error:
+                    logging.error(f"Expected key not found in the JSON response: {key_error}")
+                    raise DiscoveryError("Missing expected data in device response.")
 
         except OSError as e:
             raise ConnectionError(f"Network issue encountered: {str(e)}")  # Raise a custom error for network issues
+
+        finally:
+            sock.close()  # Ensure the socket is closed
 
         if not maxsmart_devices:
             raise DiscoveryError("No MaxSmart devices found.")  # Raise if no devices were discovered
 
         return maxsmart_devices
+
 
 
     @staticmethod

@@ -42,7 +42,7 @@ def main():
                     port_states.append((port, port_state))  # Append the port number and its state
 
                 # Retrieve the state of the strip itself
-                strip_state = specified_maxsmart.check_state()
+                strip_state = specified_maxsmart.check_ports_state()
                 print(strip_state)  # Print the state of the entire strip
 
                 # Display the results for each port state
