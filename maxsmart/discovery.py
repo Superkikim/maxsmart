@@ -1,27 +1,17 @@
-# discovery.py
-
-import json
-import socket
-import datetime
-import logging
-from .exceptions import DiscoveryError, ConnectionError, FirmwareError
-
-
 import asyncio
-import json
 import socket
-import datetime
+import json
 import logging
-
-class DiscoveryError(Exception):
-    pass
+import datetime
+from .const import DEFAULT_TARGET_IP, UDP_PORT, UDP_TIMEOUT, DISCOVERY_MESSAGE
+from .exceptions import DiscoveryError, ConnectionError
 
 class MaxSmartDiscovery:
     @staticmethod
-    async def discover_maxsmart(ip=None):
+    async def discover_maxsmart(ip=None, user_locale="en"):  # Ensure user_locale is set
         maxsmart_devices = []
-        message = f"00dv=all,{datetime.datetime.now().strftime('%Y-%m-%d,%H:%M:%S')};"
-        target_ip = ip if ip else "255.255.255.255"
+        message = DISCOVERY_MESSAGE.format(datetime=datetime.datetime.now().strftime('%Y-%m-%d,%H:%M:%S'))
+        target_ip = ip if ip else DEFAULT_TARGET_IP
 
         loop = asyncio.get_event_loop()
 
@@ -32,8 +22,8 @@ class MaxSmartDiscovery:
 
         try:
             # Send the discovery message
-            await loop.run_in_executor(None, sock.sendto, message.encode(), (target_ip, 8888))
-            sock.settimeout(2)
+            await loop.run_in_executor(None, sock.sendto, message.encode(), (target_ip, UDP_PORT))
+            sock.settimeout(UDP_TIMEOUT)
 
             while True:
                 try:
@@ -41,7 +31,6 @@ class MaxSmartDiscovery:
                     data, addr = await loop.run_in_executor(None, sock.recvfrom, 1024)
                     raw_result = data.decode("utf-8", errors="replace")
                     json_data = json.loads(raw_result)
-                    ip_address = addr[0]
                     device_data = json_data.get("data", {})
 
                     if device_data:
@@ -54,13 +43,13 @@ class MaxSmartDiscovery:
                             "sn": sn,
                             "name": name,
                             "pname": pname,
-                            "ip": ip_address,
+                            "ip": addr[0],
                             "ver": ver,
                         }
                         maxsmart_devices.append(maxsmart_device)
 
                     # Check if a specific IP is specified to stop after the first response
-                    if ip and ip != "255.255.255.255":
+                    if ip and ip != DEFAULT_TARGET_IP:
                         break  # Exit loop after receiving the first response
 
                 except socket.timeout:
@@ -70,38 +59,23 @@ class MaxSmartDiscovery:
 
                 except json.JSONDecodeError:
                     logging.error(f"Failed to decode JSON from raw result: {raw_result}")
-                    raise DiscoveryError("Received invalid JSON data.")  # Raise a custom error
+                    # Raise a custom error using the utility method
+                    raise DiscoveryError("ERROR_INVALID_JSON", user_locale)  # Ensure correct usage
 
                 except KeyError as key_error:
                     logging.error(f"Expected key not found in the JSON response: {key_error}")
-                    raise DiscoveryError("Missing expected data in device response.")
+                    # Raise a custom error using the utility method
+                    raise DiscoveryError("ERROR_MISSING_EXPECTED_DATA", user_locale)  # Ensure correct usage
 
         except OSError as e:
-            raise ConnectionError(f"Network issue encountered: {str(e)}")  # Raise a custom error for network issues
+            # Raise a custom error for network issues, ensuring user_locale is passed
+            raise ConnectionError(user_locale=user_locale, error_key="ERROR_NETWORK_ISSUE", detail=str(e))
 
         finally:
             sock.close()  # Ensure the socket is closed
 
         if not maxsmart_devices:
-            raise DiscoveryError("No MaxSmart devices found.")  # Raise if no devices were discovered
+            # Raise if no devices were discovered
+            raise DiscoveryError("ERROR_NO_DEVICES_FOUND", user_locale)  # Ensure correct usage
 
         return maxsmart_devices
-
-
-
-    @staticmethod
-    def _validate_firmware_versions(devices):
-        for device in devices:
-            firmware_version = device.get("ver", "N/A")  # Default to "N/A" if not found
-            if firmware_version == "1.30":
-                continue  # Safe to proceed with version 1.30
-            else:
-                # Handle devices with non-1.30 firmware versions
-                logging.warning(
-                    f"Device with IP {device['ip']} has firmware version {firmware_version}. "
-                    f"This module has not been tested with firmware version {firmware_version}."
-                )
-                raise FirmwareError(
-                    f"Device with IP {device['ip']} has incompatible firmware version {firmware_version}. "
-                    "This module has been tested with MaxSmart devices with firmware version 1.30."
-                )

@@ -4,13 +4,24 @@ import asyncio
 import aiohttp
 import json
 from .exceptions import DiscoveryError, ConnectionError, StateError, CommandError
+from .const import CMD_SET_PORT_STATE, CMD_GET_DEVICE_DATA, CMD_SET_PORT_NAME
+from .const import DEFAULT_STRIP_NAME, DEFAULT_PORT_NAMES
+from .const import RESPONSE_CODE_SUCCESS, CMD_RESPONSE_TIMEOUT, CMD_RETRIES
+from .const import MAX_PORT_NUMBER, MAX_PORT_NAME_LENGTH, DEFAULT_PORT_NAMES, DEFAULT_STRIP_NAME
+from .utils import get_user_locale
 
 class MaxSmartDevice:
     def __init__(self, ip):
         self.ip = ip
-        self.strip_name = "Strip"  # Default strip name
-        self.port_names = [f"Port {i}" for i in range(1, 7)]  # Default port names
-        self.session = aiohttp.ClientSession()  # Create a single session for the class
+        self.strip_name = DEFAULT_STRIP_NAME  # Default strip name
+        self.port_names = DEFAULT_PORT_NAMES  # Default port names
+        self.user_locale = get_user_locale()  # Get user's locale from utils
+
+        try:
+            self.session = aiohttp.ClientSession()  # Create a single session for the class
+        except Exception as e:
+            raise ConnectionError(user_locale=self.user_locale, error_key="ERROR_NETWORK_ISSUE", detail=str(e))
+
         self._cached_state = None  # Cache for the strip's state
 
     async def _send_command(self, cmd, params=None):
@@ -20,16 +31,16 @@ class MaxSmartDevice:
         url = f"http://{self.ip}/?cmd={cmd}"
         cmd_json = json.dumps(params) if params else None
 
-        retries = 3
-        delay = 1  # seconds
+        retries = CMD_RETRIES
+        delay = CMD_RESPONSE_TIMEOUT  # seconds
 
         for attempt in range(retries):
             try:
                 async with self.session.get(url, params={'json': cmd_json}) as response:
                     # Log response status for troubleshooting
-                    if response.status != 200:
+                    if response.status != RESPONSE_CODE_SUCCESS:
                         content = await response.text()
-                        print(f"Received non-200 response: {response.status}, content: {content}")
+                        print(f"Received non-{RESPONSE_CODE_SUCCESS} response: {response.status}, content: {content}")
 
                     # Raise an error for non-success responses
                     response.raise_for_status()
@@ -53,7 +64,7 @@ class MaxSmartDevice:
     async def turn_on(self, port):
         try:
             params = {"port": port, "state": 1}
-            await self._send_command(200, params)
+            await self._send_command(CMD_SET_PORT_STATE, params)
             await asyncio.sleep(1)  # Wait for command to take effect
 
             if port == 0:
@@ -68,7 +79,7 @@ class MaxSmartDevice:
     async def turn_off(self, port):
         try:
             params = {"port": port, "state": 0}
-            await self._send_command(200, params)
+            await self._send_command(CMD_SET_PORT_STATE, params)
             await asyncio.sleep(1)  # Wait for command to take effect
 
             if port == 0:
@@ -82,7 +93,7 @@ class MaxSmartDevice:
 
     async def get_data(self):
         try:
-            response = await self._send_command(511, params=None)  # Assuming 511 is the command to get data
+            response = await self._send_command(CMD_GET_DEVICE_DATA, params=None)  # Assuming 511 is the command to get data
             state = response.get('data', {}).get('switch')
             wattage = response.get('data', {}).get('watt')
             
@@ -99,7 +110,7 @@ class MaxSmartDevice:
 
         try:
             # Send command to get the state of the device
-            response = await self._send_command(511)  # Assuming 511 is the command to check state
+            response = await self._send_command(CMD_GET_DEVICE_DATA)  # Assuming 511 is the command to check state
 
             # Retrieve the complete state data, which may consist of multiple values
             data = response.get('data', {})
@@ -162,7 +173,7 @@ class MaxSmartDevice:
     async def get_hourly_data(self, port):
         try:
             params = {"type": 0}
-            response = await self._send_command(510, params)
+            response = await self._send_command(CMD_GET_HOURLY_DATA, params)
             data = response.get("data", {}).get("watt", [])
             if not data or len(data) < port:
                 raise StateError("No watt data received from the device")
@@ -174,7 +185,7 @@ class MaxSmartDevice:
 
     async def get_power_data(self, port):
         try:
-            response = await self._send_command(511, params=None)
+            response = await self._send_command(CMD_GET_DEVICE_DATA, params=None)
             data = response.get("data", {})
             watt = data.get("watt", [])
             if not watt or port < 1 or port > len(watt):
@@ -229,24 +240,24 @@ class MaxSmartDevice:
             StateError: If the port number is invalid, the new name is empty, or the new name is too long.
             CommandError: If there's an error sending the command to the device.
         """
-        if not 0 <= port <= 6:
-            raise StateError(f"Invalid port number: {port}. Must be between 0 and 6.")
-        
+        if not 0 <= port <= MAX_PORT_NUMBER:
+            raise StateError(f"Invalid port number: {port}. Must be between 0 and {MAX_PORT_NUMBER}.")
+
         if not new_name or new_name.strip() == "":
             raise StateError("Port name cannot be empty.")
 
-        if len(new_name) > 21:
-            raise StateError(f"Port name '{new_name}' is too long. Maximum length is 21 characters.")
+        if len(new_name) > MAX_PORT_NAME_LENGTH:
+            raise StateError(f"Port name '{new_name}' is too long. Maximum length is {MAX_PORT_NAME_LENGTH} characters.")
 
         try:
             params = {
                 "port": port,
                 "name": new_name
             }
-            response = await self._send_command(201, params)
-            
+            response = await self._send_command(CMD_SET_PORT_NAME, params)
+
             # Check if the command was successful
-            if response.get('code') == 200:
+            if response.get('code') == RESPONSE_CODE_SUCCESS:
                 # Update the local port name storage
                 if port == 0:
                     self.strip_name = new_name
