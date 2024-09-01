@@ -2,34 +2,42 @@
 # test_discovery_async.py
 
 import asyncio
-from maxsmart import MaxSmartDiscovery
+import logging
+from maxsmart.discovery import MaxSmartDiscovery
+from maxsmart.exceptions import DiscoveryError, ConnectionError
 
-async def discover_devices(ip=None):
-    """Discover MaxSmart devices on the network.
-    
-    Args:
-        ip (str): The IP address to discover devices from. Defaults to broadcast address if None.
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 
-    Returns:
-        list: A list of discovered MaxSmart devices.
-    """
-    print("Discovering MaxSmart devices...")
-    if ip is None:
-        ip = "255.255.255.255"  # Use the default broadcast address for discovery
-    devices = await MaxSmartDiscovery.discover_maxsmart(ip)  # Await the async method
-    return devices  # Return the list of discovered devices
+# Optional: Implement a simple IP validation function
+def is_valid_ip(ip):
+    import re
+    pattern = r"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$"
+    return re.match(pattern, ip) is not None
 
 async def main():
-    """Main function to execute the discovery process and print the results."""
+    ip_address = None  # You can replace None with an actual IP address if needed
+    # Validate the IP only if it's specified
+    if ip_address and not is_valid_ip(ip_address):
+        logging.error("Invalid IP address provided.")
+        return
+
     try:
-        devices = await discover_devices()  # Await the async discovery
-        print("Discovered devices:", devices)  # Print the discovered devices
-    except ConnectionError as ce:
-        print(f"Connection error occurred: {ce}")
-    except DiscoveryError as de:
-        print(f"Discovery error occurred: {de}")
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        # Call the discover_maxsmart method
+        devices = await MaxSmartDiscovery.discover_maxsmart(ip=ip_address, user_locale='en')
+        
+        # Output discovered devices
+        if devices:
+            logging.info("Discovered MaxSmart Devices:")
+            for device in devices:
+                logging.info(f"Device SN: {device['sn']}, Name: {device['name']}, IP: {device['ip']}, Version: {device['ver']}")
+        else:
+            logging.info("No devices discovered.")
+    
+    except DiscoveryError as e:
+        logging.error(f"Discovery error: {e}")
+    except ConnectionError as e:
+        logging.error(f"Connection error: {e}")
 
 if __name__ == "__main__":
-    asyncio.run(main())  # Use asyncio to run the main async function
+    asyncio.run(main())
