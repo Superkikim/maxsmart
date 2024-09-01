@@ -3,25 +3,31 @@
 
 import asyncio
 import logging
+import argparse
 from maxsmart.discovery import MaxSmartDiscovery
 from maxsmart.exceptions import DiscoveryError, ConnectionError
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 
-# Optional: Implement a simple IP validation function
+# Function for validating an IP address
 def is_valid_ip(ip):
     import re
     pattern = r"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$"
     return re.match(pattern, ip) is not None
 
-async def main():
-    ip_address = None  # You can replace None with an actual IP address if needed
-    # Validate the IP only if it's specified
-    if ip_address and not is_valid_ip(ip_address):
-        logging.error("Invalid IP address provided.")
-        return
+# Set up argument parsing
+parser = argparse.ArgumentParser(description="Discover MaxSmart devices.")
+parser.add_argument('ip_address', nargs='?', default=None, help="Specify the IP address for discovery (default: broadcast).")
 
+args = parser.parse_args()
+ip_address = args.ip_address
+
+if ip_address and not is_valid_ip(ip_address):
+    logging.error("Invalid IP address provided.")
+    exit(1)
+
+async def main():
     try:
         # Call the discover_maxsmart method
         devices = await MaxSmartDiscovery.discover_maxsmart(ip=ip_address, user_locale='en')
