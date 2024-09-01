@@ -99,7 +99,7 @@ class MaxSmartDevice:
 
         try:
             # Send command to get the state of the device
-            response = await self._send_command(511, params=None)  # Assuming 511 is the command to check state
+            response = await self._send_command(511)  # Assuming 511 is the command to check state
 
             # Retrieve the complete state data, which may consist of multiple values
             data = response.get('data', {})
