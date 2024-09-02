@@ -1,4 +1,4 @@
-import locale
+import locale, logging
 
 def get_user_locale():
     """
@@ -11,7 +11,7 @@ def get_user_locale():
     user_locale = locale.getdefaultlocale()[0]  # E.g., 'en_US'
     return user_locale if user_locale is not None else 'en'  # Fallback to 'en'
 
-def get_localized_message(message_dict, error_key, user_locale, default_message="Unknown error."):
+def get_user_message(message_dict, error_key, user_locale, default_message="Unknown error."):
     """
     Retrieve a localized message from the provided dictionary.
 
@@ -29,16 +29,17 @@ def get_localized_message(message_dict, error_key, user_locale, default_message=
 
 import logging
 
-def log_localized_message(message_dict, log_key, user_locale, *args, **kwargs):
-    """
-    Log a localized message based on the provided dictionary.
-
-    Parameters:
-        message_dict (dict): A dictionary holding localized logging messages.
-        log_key (str): The key for the specific log message.
-        user_locale (str): The user's locale.
-    """
+def log_message(message_dict, log_key, user_locale, level=logging.INFO, *args, **kwargs):
     lang = user_locale.split('_')[0]  # Extract language code
     log_message = message_dict.get(lang, message_dict["en"]).get(log_key, "Unknown log message.")
-    formatted_message = log_message.format(*args, **kwargs)  # Format the message if needed
-    logging.error(formatted_message)  # Log the formatted message
+    formatted_message = log_message.format(*args, **kwargs)
+    
+    # Log at the specified level
+    if level == logging.ERROR:
+        logging.error(formatted_message)
+    elif level == logging.WARNING:
+        logging.warning(formatted_message)
+    elif level == logging.INFO:
+        logging.info(formatted_message)
+    else:
+        logging.debug(formatted_message)  # Default to DEBUG if no match

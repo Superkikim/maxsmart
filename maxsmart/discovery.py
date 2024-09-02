@@ -3,8 +3,20 @@ import socket
 import json
 import logging
 import datetime
-from .const import DEFAULT_TARGET_IP, UDP_PORT, UDP_TIMEOUT, DISCOVERY_MESSAGE
-from .exceptions import DiscoveryError, ConnectionError
+
+from .const import (
+    DEFAULT_TARGET_IP,
+    UDP_PORT,
+    UDP_TIMEOUT,
+    DISCOVERY_MESSAGE
+)
+
+from .exceptions import (
+    DiscoveryError,
+    ConnectionError,
+    UdpTimeoutInfo
+)
+
 
 class MaxSmartDiscovery:
     @staticmethod
@@ -54,16 +66,15 @@ class MaxSmartDiscovery:
 
                 except socket.timeout:
                     if not maxsmart_devices:
-                        logging.info("No devices found during discovery. Trying again...")
+                        # Log the UDP timeout situation
+                        UdpTimeoutInfo(user_locale)  # Raise the timeout error if no devices are found
                     break  # Exit if the timeout occurs
 
                 except json.JSONDecodeError:
-                    logging.error(f"Failed to decode JSON from raw result: {raw_result}")
-                    # Raise a custom error using the utility method
-                    raise DiscoveryError("ERROR_INVALID_JSON", user_locale)  # Ensure correct usage
+                    # Raise the error using the utility method, which will also log the localized error message
+                    raise DiscoveryError("ERROR_INVALID_JSON", user_locale)
 
                 except KeyError as key_error:
-                    logging.error(f"Expected key not found in the JSON response: {key_error}")
                     # Raise a custom error using the utility method
                     raise DiscoveryError("ERROR_MISSING_EXPECTED_DATA", user_locale)  # Ensure correct usage
 

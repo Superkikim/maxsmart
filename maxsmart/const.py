@@ -12,16 +12,19 @@ DISCOVERY_ERROR_MESSAGES = {
         "ERROR_NO_DEVICES_FOUND": "No MaxSmart devices found.",
         "ERROR_INVALID_JSON": "Received invalid JSON data.",
         "ERROR_MISSING_EXPECTED_DATA": "Missing expected data in device response.",
+        "ERROR_UDP_TIMEOUT": "Discovery process timed out while waiting for device responses.",  # New message
     },
     "fr": {
         "ERROR_NO_DEVICES_FOUND": "Aucun appareil MaxSmart trouvé.",
         "ERROR_INVALID_JSON": "Données JSON invalides reçues.",
         "ERROR_MISSING_EXPECTED_DATA": "Données attendues manquantes dans la réponse de l'appareil.",
+        "ERROR_UDP_TIMEOUT": "Le processus de découverte a expiré en attendant des réponses des appareils.",  # New message
     },
     "de": {
         "ERROR_NO_DEVICES_FOUND": "Keine MaxSmart-Geräte gefunden.",
         "ERROR_INVALID_JSON": "Ungültige JSON-Daten empfangen.",
         "ERROR_MISSING_EXPECTED_DATA": "Erwartete Daten in der Geräteantwort fehlen.",
+        "ERROR_UDP_TIMEOUT": "Der Entdeckungsprozess wurde abgebrochen, während auf die Antworten der Geräte gewartet wurde.",  # New message
     },
 }
 
@@ -30,14 +33,17 @@ DISCOVERY_LOGGING_MESSAGES = {
     "en": {
         "LOG_NO_DEVICES_FOUND": "No MaxSmart devices found during discovery.",
         "LOG_RETRY_DISCOVERY": "Retrying discovery...",
+        "LOG_UDP_TIMEOUT": "Discovery process timed out while waiting for device responses.",  # New log
     },
     "fr": {
         "LOG_NO_DEVICES_FOUND": "Aucun appareil MaxSmart trouvé lors de la découverte.",
         "LOG_RETRY_DISCOVERY": "Nouvelle tentative de découverte...",
+        "LOG_UDP_TIMEOUT": "Le processus de découverte a expiré en attendant des réponses des appareils.",  # New log
     },
     "de": {
         "LOG_NO_DEVICES_FOUND": "Keine MaxSmart-Geräte während der Entdeckung gefunden.",
         "LOG_RETRY_DISCOVERY": "Erneutes Versuchen der Entdeckung...",
+        "LOG_UDP_TIMEOUT": "Der Entdeckungsprozess wurde abgebrochen, während auf die Antworten der Geräte gewartet wurde.",  # New log
     },
 }
 
