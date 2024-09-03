@@ -146,6 +146,22 @@ class DeviceTimeoutError(MaxSmartError):
         # Step 3: Raise the error with the localized message
         super().__init__(message)
             
+class DeviceOperationError(MaxSmartError):
+    """Exception raised for invalid parameters during device operations."""
+
+    def __init__(self, user_locale):
+        self.user_locale = user_locale
+
+        # Get the localized error message for invalid parameters
+        error_key = "ERROR_INVALID_PARAMETERS"
+        message = get_user_message(DEVICE_ERROR_MESSAGES, error_key, self.user_locale)
+
+        # Log the localized message
+        log_message(DEVICE_ERROR_MESSAGES, error_key, self.user_locale, level=logging.ERROR)
+
+        # Raise the error with the localized message
+        super().__init__(message)
+
 class FirmwareError(MaxSmartError):
     """Exception raised for issues related to firmware version."""
     
@@ -166,15 +182,19 @@ class FirmwareError(MaxSmartError):
 class StateError(MaxSmartError):
     """Exception raised for errors related to device states."""
     
-    def __init__(self, message, user_locale):
+    def __init__(self, message, user_locale=None):
+        # Store the user locale for possible future use
         self.user_locale = user_locale
         
         # Step 1: Get the localized error message
+        # Default to a generic message if user_locale is not provided
         error_key = "ERROR_STATE_INVALID"
-        localized_message = get_user_message(STATE_ERROR_MESSAGES, error_key, self.user_locale)
+        localized_message = get_user_message(STATE_ERROR_MESSAGES, error_key, user_locale)
 
         # Step 2: Log the localized message
-        log_message(STATE_ERROR_MESSAGES, error_key, self.user_locale, level=logging.ERROR)
+        log_message(STATE_ERROR_MESSAGES, error_key, user_locale, level=logging.ERROR)
 
         # Step 3: Raise the error with the localized message
-        super().__init__(f"State error: {localized_message}")
+        # Initialize the base class with a more useful message
+        super().__init__(localized_message)  # Pass in the localized message to the base class
+

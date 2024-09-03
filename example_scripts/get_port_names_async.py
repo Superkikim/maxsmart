@@ -60,6 +60,8 @@ async def main():
                 print(f"{port}: {name}")  # Output each port name
         except Exception as e:
             print(f"Error retrieving port names: {str(e)}")
+        finally:
+            await device.close()  # Ensure to close the session
 
 if __name__ == "__main__":
     asyncio.run(main())  # Execute the main function using asyncio

@@ -56,6 +56,8 @@ DEVICE_ERROR_MESSAGES = {
         "ERROR_UNEXPECTED_STATE": "Unexpected state for the port.",
         "ERROR_DEVICE_NOT_FOUND": "Device not found.",
         "ERROR_DEVICE_TIMEOUT": "Device did not respond in time.",
+        "ERROR_INVALID_PARAMETERS": "Invalid parameters provided for the operation.",  # Existing message
+        "ERROR_UNEXPECTED": "Unexpected error occurred: {detail}",  # New message for unexpected errors
     },
     "fr": {
         "ERROR_INVALID_PORT": "Numéro de port invalide.",
@@ -64,6 +66,8 @@ DEVICE_ERROR_MESSAGES = {
         "ERROR_UNEXPECTED_STATE": "État inattendu pour le port.",
         "ERROR_DEVICE_NOT_FOUND": "Appareil non trouvé.",
         "ERROR_DEVICE_TIMEOUT": "L'appareil n'a pas répondu à temps.",
+        "ERROR_INVALID_PARAMETERS": "Paramètres invalides fournis pour l'opération.",  # Existing message
+        "ERROR_UNEXPECTED": "Une erreur inattendue s'est produite : {detail}",  # New message in French
     },
     "de": {
         "ERROR_INVALID_PORT": "Ungültige Portnummer.",
@@ -72,8 +76,12 @@ DEVICE_ERROR_MESSAGES = {
         "ERROR_UNEXPECTED_STATE": "Unerwarteter Zustand für den Port.",
         "ERROR_DEVICE_NOT_FOUND": "Gerät nicht gefunden.",
         "ERROR_DEVICE_TIMEOUT": "Das Gerät hat nicht geantwortet.",
+        "ERROR_INVALID_PARAMETERS": "Ungültige Parameter für die Operation bereitgestellt.",  # Existing message
+        "ERROR_UNEXPECTED": "Unerwartete Fehler: {detail}",  # New message in German
     },
 }
+
+
 
 # Error messages for connection-related issues
 CONNECTION_ERROR_MESSAGES = {
