@@ -4,7 +4,7 @@ import asyncio
 import aiohttp
 import json
 from .exceptions import DiscoveryError, ConnectionError, StateError, CommandError, DeviceOperationError
-from .const import CMD_SET_PORT_STATE, CMD_GET_DEVICE_DATA, CMD_SET_PORT_NAME
+from .const import CMD_SET_PORT_STATE, CMD_GET_DEVICE_DATA, CMD_SET_PORT_NAME, CMD_GET_HOURLY_DATA
 from .const import DEFAULT_STRIP_NAME, DEFAULT_PORT_NAMES
 from .const import RESPONSE_CODE_SUCCESS, CMD_RESPONSE_TIMEOUT, CMD_RETRIES
 from .const import MAX_PORT_NUMBER, MAX_PORT_NAME_LENGTH, DEFAULT_PORT_NAMES, DEFAULT_STRIP_NAME
@@ -31,24 +31,28 @@ class MaxSmartDevice:
         Send a command to get data from the device.
 
         :param cmd: Command identifier (e.g., 511).
-        :return: JSON response from the device.
+        :return: Response from the device as plain text.
         """
+        if cmd not in {CMD_GET_DEVICE_DATA, CMD_GET_HOURLY_DATA}:
+            # Use localized message for invalid command error
+            error_key = "ERROR_INVALID_PARAMETERS"
+            detail_message = get_user_message(DEVICE_ERROR_MESSAGES, error_key, self.user_locale).format(CMD_GET_HOURLY_DATA, CMD_GET_DEVICE_DATA)
+            raise CommandError(error_key, self.user_locale, detail=detail_message)
+
         url = f"http://{self.ip}/?cmd={cmd}"
 
         async with self.session.get(url) as response:
-            # Check response status
             if response.status != RESPONSE_CODE_SUCCESS:
                 content = await response.text()
-                raise CommandError(f"Get command failed. Response: {content}")
+                error_key = "ERROR_COMMAND_EXECUTION"
+                detail_message = get_user_message(DEVICE_ERROR_MESSAGES, error_key, self.user_locale).format(content=content)
+                raise CommandError(error_key, self.user_locale, detail=detail_message)
 
-            # Check if the response content type is JSON
-            if response.headers.get('Content-Type') == 'application/json':
-                return await response.json()  # Return the JSON payload
-            else:
-                # If the response is not JSON, handle accordingly
-                content = await response.text()
-                print("Received non-JSON response:", content)
-                return content  # You may choose to return this or raise an error
+            content = await response.text()  # Get response text
+            try:
+                return json.loads(content)  # Attempt to parse the text as JSON
+            except json.JSONDecodeError:
+                raise CommandError("ERROR_COMMAND_EXECUTION", self.user_locale, detail=f"Received invalid JSON: {content}")
 
     async def _send_set_command(self, cmd, params=None):
         """
@@ -59,14 +63,18 @@ class MaxSmartDevice:
         """
         # Validate the command for setting states
         if cmd not in {CMD_SET_PORT_STATE, CMD_SET_PORT_NAME}:
-            raise CommandError("Invalid set command. Must be either 200 or 201.", self.user_locale)
+            error_key = "ERROR_INVALID_PARAMETERS"
+            detail_message = get_user_message(DEVICE_ERROR_MESSAGES, error_key, self.user_locale).format(CMD_SET_PORT_STATE, CMD_SET_PORT_NAME)
+            raise CommandError(error_key, self.user_locale, detail=detail_message)
 
         url = f"http://{self.ip}/?cmd={cmd}&json={json.dumps(params or {})}"
 
         async with self.session.get(url) as response:
             if response.status != RESPONSE_CODE_SUCCESS:
                 content = await response.text()
-                raise CommandError(f"Set command failed. Response: {content}")
+                error_key = "ERROR_COMMAND_EXECUTION"
+                detail_message = get_user_message(DEVICE_ERROR_MESSAGES, error_key, self.user_locale).format(content=content)
+                raise CommandError(error_key, self.user_locale, detail=detail_message)
 
         return  # Success, no payload expected
 
@@ -76,12 +84,35 @@ class MaxSmartDevice:
         # Use the set command
         await self._send_set_command(CMD_SET_PORT_STATE, params)
 
+        # Verify the state after turning on
+        attempts = 0
+        while attempts < 3:
+            try:
+                await self._verify_state(port, 1)  # Check if the port is ON
+                return  # Exit after successful operation
+            except StateError:
+                attempts += 1
+
+        # Raise an error indicating the state is unexpected after 3 attempts
+        raise StateError("ERROR_UNEXPECTED_STATE", self.user_locale)  # Localized error for unexpected state
+
     async def turn_off(self, port):
         """Turn off a specific port."""
         params = {"port": port, "state": 0}
         # Use the set command
         await self._send_set_command(CMD_SET_PORT_STATE, params)
 
+        # Verify the state after turning off
+        attempts = 0
+        while attempts < 3:
+            try:
+                await self._verify_state(port, 0)  # Check if the port is OFF
+                return  # Exit after successful operation
+            except StateError:
+                attempts += 1
+
+        # Raise an error indicating the state is unexpected after 3 attempts
+        raise StateError("ERROR_UNEXPECTED_STATE", self.user_locale)  # Localized error for unexpected state
     async def get_data(self):
         try:
             response = await self._send_command(CMD_GET_DEVICE_DATA, params=None)  # Get data from the device
@@ -107,25 +138,28 @@ class MaxSmartDevice:
 
     async def check_state(self, port=None):
         """Check the state of a specific port or all ports."""
-        if port is not None:
-            # Validate the port number
-            if not 1 <= port <= 6:
-                raise DeviceOperationError(self.user_locale)
-            
+        try:
             response = await self._send_get_command(CMD_GET_DEVICE_DATA)
 
+            # Validate the response structure
             if not isinstance(response, dict) or 'data' not in response or 'switch' not in response['data']:
-                raise StateError("Received invalid data structure.", self.user_locale)
+                raise StateError(self.user_locale)
 
-            return response['data']['switch'][port - 1]  # Return state for the specified port
+            # If a specific port number is provided, return its state
+            if port is not None:
+                # Validate the port number
+                if not 1 <= port <= 6:
+                    raise DeviceOperationError(self.user_locale)  # Raise with appropriate error
 
-        else:
-            response = await self._send_get_command(CMD_GET_DEVICE_DATA)
+                return response['data']['switch'][port - 1]  # Return state for the specified port
 
-            if not isinstance(response, dict) or 'data' not in response or 'switch' not in response['data']:
-                raise StateError("Received invalid data structure.", self.user_locale)
+            # Return the list of states for all ports
+            return response['data']['switch']
 
-            return response['data']['switch']  # Return the list of states for all ports
+        except CommandError as e:
+            raise CommandError("ERROR_COMMAND_EXECUTION", self.user_locale, detail=str(e))
+        except Exception as e:
+            raise StateError(self.user_locale)  # Simplified error handling
 
     async def _verify_state(self, port, expected_state):
         """
@@ -140,7 +174,7 @@ class MaxSmartDevice:
                 all_states = await self.check_state()  # Fetch all port states
                 for state in all_states:
                     if state != expected_state:
-                        raise StateError("ERROR_UNEXPECTED_STATE", self.user_locale)  # Raise if any port is not as expected
+                        raise StateError(self.user_locale)  # Raise if any port is not as expected
             else:
                 # Validate a specific port only
                 if not 1 <= port <= 6:
@@ -148,12 +182,12 @@ class MaxSmartDevice:
 
                 current_state = await self.check_state(port)  # Check the specific port state
                 if current_state != expected_state:
-                    raise StateError("ERROR_UNEXPECTED_STATE", self.user_locale)  # Raise if the specific port is not as expected
+                    raise StateError(self.user_locale)  # Raise if the specific port is not as expected
 
-        except CommandError:
-            raise CommandError("ERROR_COMMAND_EXECUTION", self.user_locale)  # Raise with standardized message
+        except CommandError as e:
+            raise CommandError("ERROR_COMMAND_EXECUTION", self.user_locale, detail=str(e))
         except Exception as e:
-            raise StateError("ERROR_UNEXPECTED", self.user_locale)  # Handle unexpected errors
+            raise StateError(self.user_locale)  # Handle unexpected errors
 
     async def get_hourly_data(self, port):
         try:

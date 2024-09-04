@@ -182,7 +182,7 @@ class FirmwareError(MaxSmartError):
 class StateError(MaxSmartError):
     """Exception raised for errors related to device states."""
     
-    def __init__(self, message, user_locale=None):
+    def __init__(self, user_locale=None):
         # Store the user locale for possible future use
         self.user_locale = user_locale
         
