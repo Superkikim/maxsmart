@@ -33,27 +33,25 @@ async def retrieve_strip_states(strip_name):
 
             try:
                 # Retrieve the state of all ports in a single call
-                print("Retrieving port states...")
-                port_states = await specified_maxsmart.check_ports_state()  # Use check_ports_state instead
+                print("Retrieving port state...")
+                port_state = await specified_maxsmart.check_state(port=3)  # Use check_ports_state instead
+                print(f"Port state: {port_state}")
 
                 # Retrieve the state of the strip itself (assumes you have a method like check_state())
                 print("Retrieving strip state...")
                 strip_state = await specified_maxsmart.check_state()  # Update to call the correct method
                 print(f"Strip state: {strip_state}")
 
-                print("Port states:")
-                for port in range(1, len(port_states) + 1):
-                    print(f"Port {port}: {port_states[port - 1]}")  # Adjust for 0-based indexing
-
             except ClientError as ce:
                 print(f"HTTP error occurred: {ce}")  # Handle HTTP-related errors
             except Exception as e:
                 print(f"An error occurred while retrieving states: {e}")
+            finally:
+                await specified_maxsmart.close()  # Close the connection when done
         else:
             print(f"{strip_name} strip not found.")
     else:
         print("No MaxSmart devices found.")
-
 
 async def main():
     if len(sys.argv) != 2:
@@ -70,6 +68,7 @@ async def main():
         print(f"Discovery error occurred: {de}")
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
+
 
 if __name__ == "__main__":
     asyncio.run(main())
