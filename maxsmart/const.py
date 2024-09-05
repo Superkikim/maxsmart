@@ -179,7 +179,7 @@ LIMITED_SUPPORT_FIRMWARE = "2.11"  # 2.11 firmware supports local basic commands
 # Device command identifiers
 CMD_SET_PORT_STATE = 200  # Command to set the state (on/off) of a specific port
 CMD_GET_DEVICE_DATA = 511  # Command to get various data from the device (wattage, amperage, switch states)
-CMD_GET_STATISTICS = 510  # Command to get hourly data
+CMD_GET_STATISTICS = 510  # Command to get statistics
 CMD_SET_PORT_NAME = 201  # Command to set or change the name of a specific port
 
 # Default values for ports and strip

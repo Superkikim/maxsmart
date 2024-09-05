@@ -27,8 +27,6 @@ def get_user_message(message_dict, error_key, user_locale, default_message="Unkn
     lang = user_locale.split('_')[0]  # Extract language code
     return message_dict.get(lang, message_dict["en"]).get(error_key, default_message)
 
-import logging
-
 def log_message(message_dict, log_key, user_locale, level=logging.INFO, *args, **kwargs):
     lang = user_locale.split('_')[0]  # Extract language code
     log_message = message_dict.get(lang, message_dict["en"]).get(log_key, "Unknown log message.")
