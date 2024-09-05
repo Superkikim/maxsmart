@@ -48,6 +48,9 @@ DISCOVERY_LOGGING_MESSAGES = {
 }
 
 # Multilingual error messages for device-related errors
+# const.py
+
+# Multilingual error messages for device-related errors
 DEVICE_ERROR_MESSAGES = {
     "en": {
         "ERROR_INVALID_PORT": "Invalid port number.",
@@ -56,8 +59,9 @@ DEVICE_ERROR_MESSAGES = {
         "ERROR_UNEXPECTED_STATE": "Unexpected state for the port.",
         "ERROR_DEVICE_NOT_FOUND": "Device not found.",
         "ERROR_DEVICE_TIMEOUT": "Device did not respond in time.",
-        "ERROR_INVALID_PARAMETERS": "Invalid parameters provided for the operation.",  # Existing message
-        "ERROR_UNEXPECTED": "Unexpected error occurred: {detail}",  # New message for unexpected errors
+        "ERROR_INVALID_PARAMETERS": "Invalid parameters provided for the operation.",
+        "ERROR_INVALID_TYPE": "Invalid type. Must be 0 (hourly), 1 (daily), or 2 (monthly).",  # New message for type error
+        "ERROR_UNEXPECTED": "Unexpected error occurred: {detail}",
     },
     "fr": {
         "ERROR_INVALID_PORT": "Numéro de port invalide.",
@@ -66,8 +70,9 @@ DEVICE_ERROR_MESSAGES = {
         "ERROR_UNEXPECTED_STATE": "État inattendu pour le port.",
         "ERROR_DEVICE_NOT_FOUND": "Appareil non trouvé.",
         "ERROR_DEVICE_TIMEOUT": "L'appareil n'a pas répondu à temps.",
-        "ERROR_INVALID_PARAMETERS": "Paramètres invalides fournis pour l'opération.",  # Existing message
-        "ERROR_UNEXPECTED": "Une erreur inattendue s'est produite : {detail}",  # New message in French
+        "ERROR_INVALID_PARAMETERS": "Paramètres invalides fournis pour l'opération.",
+        "ERROR_INVALID_TYPE": "Type invalide. Doit être 0 (horaire), 1 (journalier) ou 2 (mensuel).",  # New message in French
+        "ERROR_UNEXPECTED": "Une erreur inattendue s'est produite : {detail}",  # New message for unexpected errors
     },
     "de": {
         "ERROR_INVALID_PORT": "Ungültige Portnummer.",
@@ -76,10 +81,12 @@ DEVICE_ERROR_MESSAGES = {
         "ERROR_UNEXPECTED_STATE": "Unerwarteter Zustand für den Port.",
         "ERROR_DEVICE_NOT_FOUND": "Gerät nicht gefunden.",
         "ERROR_DEVICE_TIMEOUT": "Das Gerät hat nicht geantwortet.",
-        "ERROR_INVALID_PARAMETERS": "Ungültige Parameter für die Operation bereitgestellt.",  # Existing message
-        "ERROR_UNEXPECTED": "Unerwartete Fehler: {detail}",  # New message in German
+        "ERROR_INVALID_PARAMETERS": "Ungültige Parameter für die Operation bereitgestellt.",
+        "ERROR_INVALID_TYPE": "Ungültiger Typ. Muss 0 (stündlich), 1 (täglich) oder 2 (monatlich) sein.",  # New message in German
+        "ERROR_UNEXPECTED": "Unerwartete Fehler: {detail}",  # New message for unexpected errors
     },
 }
+
 
 
 
@@ -138,6 +145,22 @@ FIRMWARE_ERROR_MESSAGES = {
     },
 }
 
+# const.py
+
+# Currency symbols mapped to identifiers
+CURRENCY_SYMBOLS = {
+    0: "€",  # Euro
+    1: "$",  # Dollar
+    2: "¥",  # Yen
+    3: "CHF"  # Swiss Francs
+}
+
+STATISTICS_TIME_FRAME = {
+    0: "Hourly",
+    1: "Daily",
+    2: "Monthly"
+}
+
 
 # Response codes
 RESPONSE_CODE_SUCCESS = 200  # Successful request
@@ -156,7 +179,7 @@ LIMITED_SUPPORT_FIRMWARE = "2.11"  # 2.11 firmware supports local basic commands
 # Device command identifiers
 CMD_SET_PORT_STATE = 200  # Command to set the state (on/off) of a specific port
 CMD_GET_DEVICE_DATA = 511  # Command to get various data from the device (wattage, amperage, switch states)
-CMD_GET_HOURLY_DATA = 510  # Command to get hourly data
+CMD_GET_STATISTICS = 510  # Command to get hourly data
 CMD_SET_PORT_NAME = 201  # Command to set or change the name of a specific port
 
 # Default values for ports and strip
