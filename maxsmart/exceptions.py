@@ -8,7 +8,9 @@ from .const import (
     CONNECTION_ERROR_MESSAGES, 
     DEVICE_STATE_ERROR_MESSAGES,
     FIRMWARE_ERROR_MESSAGES,
-    STATE_ERROR_MESSAGES,  # Add this line
+    STATE_ERROR_MESSAGES,
+    LIMITED_SUPPORT_FIRMWARE,
+    SUPPORTED_FIRMWARE_VERSION
 )
 
 from .utils import (
@@ -165,36 +167,41 @@ class DeviceOperationError(MaxSmartError):
 class FirmwareError(MaxSmartError):
     """Exception raised for issues related to firmware version."""
     
-    def __init__(self, device_ip, firmware_version, user_locale):
+    def __init__(self, device_ip, firmware_version, user_locale, required_version):
         self.device_ip = device_ip
         self.firmware_version = firmware_version
         self.user_locale = user_locale
+        self.required_version = required_version
         
-        # Use the utility function to get the localized error message
         error_key = "ERROR_FIRMWARE_NOT_SUPPORTED"
         message = get_user_message(FIRMWARE_ERROR_MESSAGES, error_key, self.user_locale)
         
-        # Log the localized message using the utility function
-        log_message(FIRMWARE_ERROR_MESSAGES, error_key, self.user_locale, device_ip=self.device_ip, firmware_version=self.firmware_version, level=logging.WARNING)
+        message = message.format(device_ip=self.device_ip, firmware_version=self.firmware_version)
+        
+        if self.firmware_version == LIMITED_SUPPORT_FIRMWARE:
+            message += f" Your firmware version {self.firmware_version} supports basic commands, but not port name management."
+        else:
+            message += f" Your firmware version {self.firmware_version} is not supported. Port name management requires firmware version {self.required_version}."
+        
+        log_message(FIRMWARE_ERROR_MESSAGES, error_key, self.user_locale, 
+                    device_ip=self.device_ip, 
+                    firmware_version=self.firmware_version, 
+                    required_version=self.required_version,
+                    level=logging.WARNING)
 
         super().__init__(message)
-
 class StateError(MaxSmartError):
     """Exception raised for errors related to device states."""
-    
+
     def __init__(self, user_locale=None):
-        # Store the user locale for possible future use
-        self.user_locale = user_locale
-        
         # Step 1: Get the localized error message
-        # Default to a generic message if user_locale is not provided
         error_key = "ERROR_STATE_INVALID"
         localized_message = get_user_message(STATE_ERROR_MESSAGES, error_key, user_locale)
-
+        self.user_locale = user_locale
+        
         # Step 2: Log the localized message
         log_message(STATE_ERROR_MESSAGES, error_key, user_locale, level=logging.ERROR)
 
         # Step 3: Raise the error with the localized message
-        # Initialize the base class with a more useful message
-        super().__init__(localized_message)  # Pass in the localized message to the base class
+        super().__init__(localized_message)  # Now we pass the correct localized message
 

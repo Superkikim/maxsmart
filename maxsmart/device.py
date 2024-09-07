@@ -3,13 +3,13 @@
 import asyncio
 import aiohttp
 import json
-from .exceptions import DiscoveryError, ConnectionError, StateError, CommandError, DeviceOperationError
+from .exceptions import DiscoveryError, ConnectionError, StateError, CommandError, DeviceOperationError, FirmwareError
 from .const import CMD_SET_PORT_STATE, CMD_GET_DEVICE_DATA, CMD_SET_PORT_NAME, CMD_GET_STATISTICS
 from .const import DEFAULT_STRIP_NAME, DEFAULT_PORT_NAMES
 from .const import RESPONSE_CODE_SUCCESS, CMD_RESPONSE_TIMEOUT, CMD_RETRIES
 from .const import MAX_PORT_NUMBER, MAX_PORT_NAME_LENGTH, DEFAULT_PORT_NAMES, DEFAULT_STRIP_NAME
 from .const import SUPPORTED_FIRMWARE_VERSION, LIMITED_SUPPORT_FIRMWARE
-from .const import DEVICE_ERROR_MESSAGES
+from .const import DEVICE_ERROR_MESSAGES, STATE_ERROR_MESSAGES
 from .const import CURRENCY_SYMBOLS, STATISTICS_TIME_FRAME
 from .discovery import MaxSmartDiscovery
 from .utils import get_user_locale, get_user_message
@@ -41,79 +41,61 @@ class MaxSmartDevice:
             self.sn = primary_device.get('sn')
             self.name = primary_device.get('name')
             self.version = primary_device.get('ver')
-            
+
+            # Set the strip name to the device name (for port 0)
+            self.strip_name = self.name if self.name else DEFAULT_STRIP_NAME 
+
+            # Set the port names from pname
             if 'pname' in primary_device:
                 self.port_names = primary_device['pname']
             
+            # If the version is not what is expected, use default names
             if self.version != "1.30":
-                self.strip_name = DEFAULT_STRIP_NAME
                 self.port_names = DEFAULT_PORT_NAMES
         else:
             raise Exception("No devices found during discovery.")
+
     def __repr__(self):
         return (f"MaxSmartDevice(ip={self.ip}, sn={self.sn}, name={self.name}, "
                 f"version={self.version}, strip_name={self.strip_name})")
 
-       
-    async def _send_get_command(self, cmd, params=None):
+    async def _send_command(self, cmd, params=None):
         """
-        Send a command to get data from the device.
+        Send a command to the device (both get and set operations).
 
-        :param cmd: Command identifier (e.g., 511).
-        :param params: Additional parameters for the command.
-        :return: Response from the device as plain text or JSON if applicable.
+        :param cmd: Command identifier (e.g., 511, 200, 201).
+        :param params: Additional parameters for the command (optional).
+        :return: Response from the device as JSON.
         """
         # Validate the command
-        if cmd not in {CMD_GET_DEVICE_DATA, CMD_GET_STATISTICS}:
+        valid_commands = {CMD_GET_DEVICE_DATA, CMD_GET_STATISTICS, CMD_SET_PORT_STATE, CMD_SET_PORT_NAME}
+        if cmd not in valid_commands:
             raise CommandError("ERROR_INVALID_PARAMETERS", self.user_locale,
-                            detail="Invalid get command. Must be either {} or {}.".format(CMD_GET_STATISTICS, CMD_GET_DEVICE_DATA))
+                            detail=f"Invalid command. Must be one of {', '.join(map(str, valid_commands))}.")
 
         # Construct the URL with parameters, if any
-        url = f"http://{self.ip}/?cmd={cmd}&json={json.dumps(params or {})}"
+        url = f"http://{self.ip}/?cmd={cmd}"
+        if params:
+            url += f"&json={json.dumps(params)}"
 
         async with self.session.get(url) as response:
-            # Check for success
             if response.status != RESPONSE_CODE_SUCCESS:
                 content = await response.text()
                 raise CommandError("ERROR_COMMAND_EXECUTION", self.user_locale,
-                                detail=f"Get command failed. Response: {content}")
+                                detail=f"Command failed. Response: {content}")
 
             content = await response.text()
             try:
-                return json.loads(content)  # Try parsing the content as JSON
+                return json.loads(content)
             except json.JSONDecodeError:
                 raise CommandError("ERROR_COMMAND_EXECUTION", self.user_locale,
                                 detail=f"Received invalid JSON: {content}")
-
-    async def _send_set_command(self, cmd, params=None):
-        """
-        Send a command to set the state of the device.
-
-        :param cmd: Command identifier (must be 200 or 201).
-        :param params: Parameters required for the command.
-        """
-        # Validate the command for setting states
-        if cmd not in {CMD_SET_PORT_STATE, CMD_SET_PORT_NAME}:
-            error_key = "ERROR_INVALID_PARAMETERS"
-            detail_message = get_user_message(DEVICE_ERROR_MESSAGES, error_key, self.user_locale).format(CMD_SET_PORT_STATE, CMD_SET_PORT_NAME)
-            raise CommandError(error_key, self.user_locale, detail=detail_message)
-
-        url = f"http://{self.ip}/?cmd={cmd}&json={json.dumps(params or {})}"
-
-        async with self.session.get(url) as response:
-            if response.status != RESPONSE_CODE_SUCCESS:
-                content = await response.text()
-                error_key = "ERROR_COMMAND_EXECUTION"
-                detail_message = get_user_message(DEVICE_ERROR_MESSAGES, error_key, self.user_locale).format(content=content)
-                raise CommandError(error_key, self.user_locale, detail=detail_message)
-
-        return  # Success, no payload expected
 
     async def turn_on(self, port):
         """Turn on a specific port."""
         params = {"port": port, "state": 1}
         # Use the set command
-        await self._send_set_command(CMD_SET_PORT_STATE, params)
+        await self._send_command(CMD_SET_PORT_STATE, params)
 
         # Verify the state after turning on
         attempts = 0
@@ -131,7 +113,7 @@ class MaxSmartDevice:
         """Turn off a specific port."""
         params = {"port": port, "state": 0}
         # Use the set command
-        await self._send_set_command(CMD_SET_PORT_STATE, params)
+        await self._send_command(CMD_SET_PORT_STATE, params)
 
         # Verify the state after turning off
         attempts = 0
@@ -151,7 +133,7 @@ class MaxSmartDevice:
         :return: Dictionary containing switch state and wattage data.
         """
         try:
-            response = await self._send_get_command(CMD_GET_DEVICE_DATA)
+            response = await self._send_command(CMD_GET_DEVICE_DATA)
 
             # Validate the response structure
             if not isinstance(response, dict) or 'data' not in response or 'switch' not in response['data']:
@@ -247,7 +229,7 @@ class MaxSmartDevice:
             raise CommandError("ERROR_INVALID_PARAMETERS", self.user_locale)  # Raise with invalid parameters error
 
         try:
-            response = await self._send_get_command(CMD_GET_STATISTICS, params={"type": stat_type})
+            response = await self._send_command(CMD_GET_STATISTICS, params={"type": stat_type})
 
             # Validate the response structure
             if not isinstance(response, dict) or 'data' not in response:
@@ -356,40 +338,44 @@ class MaxSmartDevice:
             FirmwareError: If the device firmware is not supported for this operation.
         """
         # Check firmware version
-        if self.ver != SUPPORTED_FIRMWARE_VERSION:
-            raise FirmwareError(self.device_ip, self.ver, self.user_locale)  # Raise firmware error
+        if self.version != SUPPORTED_FIRMWARE_VERSION:
+            if self.version == LIMITED_SUPPORT_FIRMWARE:
+                raise FirmwareError(self.ip, self.version, self.user_locale, SUPPORTED_FIRMWARE_VERSION)
+            else:
+                raise FirmwareError(self.ip, self.version, self.user_locale, SUPPORTED_FIRMWARE_VERSION)
 
         if not 0 <= port <= MAX_PORT_NUMBER:
             raise DeviceOperationError(self.user_locale)  # Raise with invalid parameters error
 
         if not new_name or new_name.strip() == "":
-            raise StateError("ERROR_INVALID_PARAMETERS", self.user_locale)  # Raise using the key for invalid parameters
+            raise StateError("ERROR_INVALID_PARAMETERS", self.user_locale)  # Invalid parameters error
 
         if len(new_name) > MAX_PORT_NAME_LENGTH:
-            raise StateError("ERROR_UNEXPECTED_STATE", self.user_locale)  # Raise for invalid name length
+            raise StateError("ERROR_UNEXPECTED_STATE", self.user_locale)  # Length error
 
         try:
             params = {
                 "port": port,
                 "name": new_name
             }
-            response = await self._send_command(CMD_SET_PORT_NAME, params)
+            # Correctly call the send command method
+            response = await self._send_command(CMD_SET_PORT_NAME, params)  # Updated method call
 
             # Check if the command was successful
             if response.get('code') == RESPONSE_CODE_SUCCESS:
-                # Update the local port name storage
                 if port == 0:
-                    self.strip_name = new_name
+                    self.strip_name = new_name  # Update the strip name
                 else:
-                    self.port_names[port - 1] = new_name
-                return True
-            else:
-                raise CommandError("ERROR_COMMAND_EXECUTION", self.user_locale)  # Use the standardized error message
+                    self.port_names[port - 1] = new_name  # Update the port name
 
-        except CommandError:
+                return True  # Successfully changed the name
+            else:
+                raise CommandError("ERROR_COMMAND_EXECUTION", self.user_locale)  # Handle command execution error
+
+        except CommandError as e:
             raise CommandError("ERROR_COMMAND_EXECUTION", self.user_locale)  # Handle command execution error
         except Exception as e:
-            raise StateError("ERROR_UNEXPECTED", self.user_locale, detail=str(e))  # Raise unexpected error with detail
+            raise StateError(self.user_locale)  # Provide a more generalized state error
 
     async def close(self):
         """Close the aiohttp ClientSession."""
