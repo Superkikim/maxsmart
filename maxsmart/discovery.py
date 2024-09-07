@@ -1,7 +1,6 @@
 import asyncio
 import socket
 import json
-import logging
 import datetime
 
 from .const import (
@@ -16,7 +15,6 @@ from .exceptions import (
     ConnectionError,
     UdpTimeoutInfo
 )
-
 
 class MaxSmartDiscovery:
     @staticmethod

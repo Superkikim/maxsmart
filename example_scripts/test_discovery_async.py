@@ -36,7 +36,7 @@ async def main():
         if devices:
             logging.info("Discovered MaxSmart Devices:")
             for device in devices:
-                logging.info(f"Device SN: {device['sn']}, Name: {device['name']}, IP: {device['ip']}, Version: {device['ver']}")
+                logging.info(f"Device SN: {device['sn']}, Name: {device['name']}, {device['pname']}, IP: {device['ip']}, Version: {device['ver']}")
         else:
             logging.info("No devices discovered.")
     

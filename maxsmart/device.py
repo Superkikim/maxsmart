@@ -11,23 +11,50 @@ from .const import MAX_PORT_NUMBER, MAX_PORT_NAME_LENGTH, DEFAULT_PORT_NAMES, DE
 from .const import SUPPORTED_FIRMWARE_VERSION, LIMITED_SUPPORT_FIRMWARE
 from .const import DEVICE_ERROR_MESSAGES
 from .const import CURRENCY_SYMBOLS, STATISTICS_TIME_FRAME
+from .discovery import MaxSmartDiscovery
 from .utils import get_user_locale, get_user_message
 
 class MaxSmartDevice:
-    def __init__(self, ip):
-        self.ip = ip
-        self.strip_name = DEFAULT_STRIP_NAME  # Default strip name
-        self.port_names = DEFAULT_PORT_NAMES  # Default port names
+    def __init__(self, ip_address):
+        self.ip = ip_address
         self.user_locale = get_user_locale()  # Get user's locale from utils
+        
+        # Initialize default values
+        self.strip_name = DEFAULT_STRIP_NAME
+        self.port_names = DEFAULT_PORT_NAMES
+        
+        # Store device information
+        self.sn = None
+        self.name = None
+        self.version = None
 
-        try:
-            self.session = aiohttp.ClientSession()  # Create a single session for the class
-        except Exception as e:
-            # Raise a ConnectionError that will log the error message automatically
-            raise ConnectionError(user_locale=self.user_locale, error_key="ERROR_NETWORK_ISSUE", detail=str(e))
+        # Create an HTTP session
+        self.session = aiohttp.ClientSession()  # Create a single session for the class
 
-        self._cached_state = None  # Cache for the strip's state
+    async def initialize_device(self):
+        """Perform device discovery and initialize properties based on the results."""
+        discovery = MaxSmartDiscovery()
+        devices = await discovery.discover_maxsmart(ip=self.ip, user_locale=self.user_locale)
 
+        if devices:
+            primary_device = devices[0]
+            self.sn = primary_device.get('sn')
+            self.name = primary_device.get('name')
+            self.version = primary_device.get('ver')
+            
+            if 'pname' in primary_device:
+                self.port_names = primary_device['pname']
+            
+            if self.version != "1.30":
+                self.strip_name = DEFAULT_STRIP_NAME
+                self.port_names = DEFAULT_PORT_NAMES
+        else:
+            raise Exception("No devices found during discovery.")
+    def __repr__(self):
+        return (f"MaxSmartDevice(ip={self.ip}, sn={self.sn}, name={self.name}, "
+                f"version={self.version}, strip_name={self.strip_name})")
+
+       
     async def _send_get_command(self, cmd, params=None):
         """
         Send a command to get data from the device.
@@ -326,7 +353,12 @@ class MaxSmartDevice:
         Raises:
             StateError: If the port number is invalid, the new name is empty, or the new name is too long.
             CommandError: If there's an error sending the command to the device.
+            FirmwareError: If the device firmware is not supported for this operation.
         """
+        # Check firmware version
+        if self.ver != SUPPORTED_FIRMWARE_VERSION:
+            raise FirmwareError(self.device_ip, self.ver, self.user_locale)  # Raise firmware error
+
         if not 0 <= port <= MAX_PORT_NUMBER:
             raise DeviceOperationError(self.user_locale)  # Raise with invalid parameters error
 

@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 # rename_ports.py
 
+import asyncio
 from maxsmart import MaxSmartDiscovery, MaxSmartDevice
 from maxsmart.exceptions import DiscoveryError, ConnectionError, StateError, CommandError
 
-def discover_devices():
+
+async def discover_devices():
     print("Discovering MaxSmart devices...")
     try:
         discovery = MaxSmartDiscovery()
-        return discovery.discover_maxsmart()
+        return await discovery.discover_maxsmart()  # Await the async method
     except (ConnectionError, DiscoveryError) as e:
         print(f"Error during device discovery: {e}")
         return []
+
 
 def select_device(devices):
     if not devices:
@@ -31,6 +34,7 @@ def select_device(devices):
         except ValueError:
             print("Please enter a valid number.")
 
+
 def get_valid_name(port_name, current_name):
     while True:
         new_name = input(f"{port_name} (current: {current_name}): ").strip()
@@ -43,8 +47,9 @@ def get_valid_name(port_name, current_name):
         else:
             return new_name  # Return the valid new name
 
-def rename_ports(device):
-    port_mapping = device.retrieve_port_names()
+
+async def rename_ports(device):
+    port_mapping = await device.retrieve_port_names()  # Await the async call
     new_names = []
 
     print("\nEnter new names for the strip and its ports (leave blank to keep current name):")
@@ -57,13 +62,14 @@ def rename_ports(device):
     for port, name in new_names:
         if name != port_mapping.get(f"Port {port}", f"Port {port}"):
             try:
-                device.change_port_name(port, name)
+                await device.change_port_name(port, name)  # Await the async call
                 print(f"Successfully renamed Port {port} to '{name}'")
             except (StateError, CommandError) as e:
                 print(f"Error renaming Port {port}: {e}")
 
-def main():
-    devices = discover_devices()
+
+async def main():
+    devices = await discover_devices()  # Await the discovery function
     if not devices:
         print("No devices found. Exiting.")
         return
@@ -73,7 +79,8 @@ def main():
         return
 
     device = MaxSmartDevice(selected_device['ip'])
-    rename_ports(device)
+    await rename_ports(device)  # Await the rename function
+
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())  # Run the main async function

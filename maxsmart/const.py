@@ -1,56 +1,57 @@
 # const.py
 
-# Discovery constants
+# -------------------------
+# Discovery Constants
+# -------------------------
 DISCOVERY_MESSAGE = "00dv=all,{datetime};"  # UDP broadcast message template
 DEFAULT_TARGET_IP = "255.255.255.255"  # Default IP for broadcasting
 UDP_PORT = 8888  # Port for UDP communication
-UDP_TIMEOUT = 2  # Timeout in seconds for waiting on UDP responses
+UDP_TIMEOUT = 3  # Timeout in seconds for waiting on UDP responses
 
-# Error messages for discovery
+# Error Messages for Discovery
 DISCOVERY_ERROR_MESSAGES = {
     "en": {
         "ERROR_NO_DEVICES_FOUND": "No MaxSmart devices found.",
         "ERROR_INVALID_JSON": "Received invalid JSON data.",
         "ERROR_MISSING_EXPECTED_DATA": "Missing expected data in device response.",
-        "ERROR_UDP_TIMEOUT": "Discovery process timed out while waiting for device responses.",  # New message
+        "ERROR_UDP_TIMEOUT": "Discovery process timed out while waiting for device responses.",
     },
     "fr": {
         "ERROR_NO_DEVICES_FOUND": "Aucun appareil MaxSmart trouvé.",
         "ERROR_INVALID_JSON": "Données JSON invalides reçues.",
         "ERROR_MISSING_EXPECTED_DATA": "Données attendues manquantes dans la réponse de l'appareil.",
-        "ERROR_UDP_TIMEOUT": "Le processus de découverte a expiré en attendant des réponses des appareils.",  # New message
+        "ERROR_UDP_TIMEOUT": "Le processus de découverte a expiré en attendant des réponses des appareils.",
     },
     "de": {
         "ERROR_NO_DEVICES_FOUND": "Keine MaxSmart-Geräte gefunden.",
         "ERROR_INVALID_JSON": "Ungültige JSON-Daten empfangen.",
         "ERROR_MISSING_EXPECTED_DATA": "Erwartete Daten in der Geräteantwort fehlen.",
-        "ERROR_UDP_TIMEOUT": "Der Entdeckungsprozess wurde abgebrochen, während auf die Antworten der Geräte gewartet wurde.",  # New message
+        "ERROR_UDP_TIMEOUT": "Der Entdeckungsprozess wurde abgebrochen, während auf die Antworten der Geräte gewartet wurde.",
     },
 }
 
-# Additional logging messages for discovery
+# Logging Messages for Discovery
 DISCOVERY_LOGGING_MESSAGES = {
     "en": {
         "LOG_NO_DEVICES_FOUND": "No MaxSmart devices found during discovery.",
         "LOG_RETRY_DISCOVERY": "Retrying discovery...",
-        "LOG_UDP_TIMEOUT": "Discovery process timed out while waiting for device responses.",  # New log
+        "LOG_UDP_TIMEOUT": "Discovery process timed out while waiting for device responses.",
     },
     "fr": {
         "LOG_NO_DEVICES_FOUND": "Aucun appareil MaxSmart trouvé lors de la découverte.",
         "LOG_RETRY_DISCOVERY": "Nouvelle tentative de découverte...",
-        "LOG_UDP_TIMEOUT": "Le processus de découverte a expiré en attendant des réponses des appareils.",  # New log
+        "LOG_UDP_TIMEOUT": "Le processus de découverte a expiré en attendant des réponses des appareils.",
     },
     "de": {
         "LOG_NO_DEVICES_FOUND": "Keine MaxSmart-Geräte während der Entdeckung gefunden.",
         "LOG_RETRY_DISCOVERY": "Erneutes Versuchen der Entdeckung...",
-        "LOG_UDP_TIMEOUT": "Der Entdeckungsprozess wurde abgebrochen, während auf die Antworten der Geräte gewartet wurde.",  # New log
+        "LOG_UDP_TIMEOUT": "Der Entdeckungsprozess wurde abgebrochen, während auf die Antworten der Geräte gewartet wurde.",
     },
 }
 
-# Multilingual error messages for device-related errors
-# const.py
-
-# Multilingual error messages for device-related errors
+# -------------------------
+# Device Error Messages
+# -------------------------
 DEVICE_ERROR_MESSAGES = {
     "en": {
         "ERROR_INVALID_PORT": "Invalid port number.",
@@ -60,7 +61,7 @@ DEVICE_ERROR_MESSAGES = {
         "ERROR_DEVICE_NOT_FOUND": "Device not found.",
         "ERROR_DEVICE_TIMEOUT": "Device did not respond in time.",
         "ERROR_INVALID_PARAMETERS": "Invalid parameters provided for the operation.",
-        "ERROR_INVALID_TYPE": "Invalid type. Must be 0 (hourly), 1 (daily), or 2 (monthly).",  # New message for type error
+        "ERROR_INVALID_TYPE": "Invalid type. Must be 0 (hourly), 1 (daily), or 2 (monthly).",
         "ERROR_UNEXPECTED": "Unexpected error occurred: {detail}",
     },
     "fr": {
@@ -71,8 +72,8 @@ DEVICE_ERROR_MESSAGES = {
         "ERROR_DEVICE_NOT_FOUND": "Appareil non trouvé.",
         "ERROR_DEVICE_TIMEOUT": "L'appareil n'a pas répondu à temps.",
         "ERROR_INVALID_PARAMETERS": "Paramètres invalides fournis pour l'opération.",
-        "ERROR_INVALID_TYPE": "Type invalide. Doit être 0 (horaire), 1 (journalier) ou 2 (mensuel).",  # New message in French
-        "ERROR_UNEXPECTED": "Une erreur inattendue s'est produite : {detail}",  # New message for unexpected errors
+        "ERROR_INVALID_TYPE": "Type invalide. Doit être 0 (horaire), 1 (journalier) ou 2 (mensuel).",
+        "ERROR_UNEXPECTED": "Une erreur inattendue s'est produite : {detail}",
     },
     "de": {
         "ERROR_INVALID_PORT": "Ungültige Portnummer.",
@@ -82,15 +83,14 @@ DEVICE_ERROR_MESSAGES = {
         "ERROR_DEVICE_NOT_FOUND": "Gerät nicht gefunden.",
         "ERROR_DEVICE_TIMEOUT": "Das Gerät hat nicht geantwortet.",
         "ERROR_INVALID_PARAMETERS": "Ungültige Parameter für die Operation bereitgestellt.",
-        "ERROR_INVALID_TYPE": "Ungültiger Typ. Muss 0 (stündlich), 1 (täglich) oder 2 (monatlich) sein.",  # New message in German
-        "ERROR_UNEXPECTED": "Unerwartete Fehler: {detail}",  # New message for unexpected errors
+        "ERROR_INVALID_TYPE": "Ungültiger Typ. Muss 0 (stündlich), 1 (täglich) oder 2 (monatlich) sein.",
+        "ERROR_UNEXPECTED": "Unerwartete Fehler: {detail}",
     },
 }
 
-
-
-
-# Error messages for connection-related issues
+# -------------------------
+# Connection Error Messages
+# -------------------------
 CONNECTION_ERROR_MESSAGES = {
     "en": {
         "ERROR_NETWORK_ISSUE": "Network issue encountered: {detail}",
@@ -103,7 +103,9 @@ CONNECTION_ERROR_MESSAGES = {
     },
 }
 
-# Additional logging messages for state errors
+# -------------------------
+# State Error Messages
+# -------------------------
 STATE_ERROR_MESSAGES = {
     "en": {
         "ERROR_STATE_INVALID": "Invalid state encountered.",
@@ -116,7 +118,9 @@ STATE_ERROR_MESSAGES = {
     },
 }
 
-# Additional logging messages for device states
+# -------------------------
+# Device State Logging Messages
+# -------------------------
 DEVICE_STATE_ERROR_MESSAGES = {
     "en": {
         "LOG_DEVICE_NOT_FOUND": "Device '{device_name}' was not found during discovery.",
@@ -132,7 +136,9 @@ DEVICE_STATE_ERROR_MESSAGES = {
     },
 }
 
-# Multilingual error messages for device-related firmware issues
+# -------------------------
+# Firmware Error Messages
+# -------------------------
 FIRMWARE_ERROR_MESSAGES = {
     "en": {
         "ERROR_FIRMWARE_NOT_SUPPORTED": "Device with IP {device_ip} has an unsupported firmware version: {firmware_version}.",
@@ -145,9 +151,9 @@ FIRMWARE_ERROR_MESSAGES = {
     },
 }
 
-# const.py
-
-# Currency symbols mapped to identifiers
+# -------------------------
+# Currency Constants
+# -------------------------
 CURRENCY_SYMBOLS = {
     0: "€",  # Euro
     1: "$",  # Dollar
@@ -155,41 +161,72 @@ CURRENCY_SYMBOLS = {
     3: "CHF"  # Swiss Francs
 }
 
+# -------------------------
+# Statistics Constants
+# -------------------------
 STATISTICS_TIME_FRAME = {
     0: "Hourly",
     1: "Daily",
     2: "Monthly"
 }
 
-
-# Response codes
+# -------------------------
+# Response Codes
+# -------------------------
 RESPONSE_CODE_SUCCESS = 200  # Successful request
 RESPONSE_CODE_ERROR = 400     # Client error (bad request)
 RESPONSE_CODE_NOT_FOUND = 404  # Resource not found
 RESPONSE_CODE_SERVER_ERROR = 500  # Internal server error
 
-# Command constants
+# -------------------------
+# Command Constants
+# -------------------------
 CMD_RESPONSE_TIMEOUT = 1
 CMD_RETRIES = 3
 
-# Firmware version supported by the module
+# Firmware versions supported by the module
 SUPPORTED_FIRMWARE_VERSION = "1.30"  # Only this version is supported
 LIMITED_SUPPORT_FIRMWARE = "2.11"  # 2.11 firmware supports local basic commands, but no name management
 
-# Device command identifiers
+# -------------------------
+# Device Command Identifiers
+# -------------------------
 CMD_SET_PORT_STATE = 200  # Command to set the state (on/off) of a specific port
 CMD_GET_DEVICE_DATA = 511  # Command to get various data from the device (wattage, amperage, switch states)
 CMD_GET_STATISTICS = 510  # Command to get statistics
 CMD_SET_PORT_NAME = 201  # Command to set or change the name of a specific port
 
-# Default values for ports and strip
+# -------------------------
+# Default Values
+# -------------------------
 DEFAULT_PORT_NAMES = [f"Port {i}" for i in range(1, 7)]  # Default port names: Port 1 to Port 6
 DEFAULT_STRIP_NAME = "Strip"  # Default name for the power strip
 
-# Additional configurations
+# -------------------------
+# Additional Configurations
+# -------------------------
 MAX_PORT_NUMBER = 6  # Maximum valid port number
 MAX_PORT_NAME_LENGTH = 21  # Maximum length for port names
 
-# State values for ports
+# -------------------------
+# State Values for Ports
+# -------------------------
 STATE_ON = 1  # State value for "on"
 STATE_OFF = 0  # State value for "off"
+
+# -------------------------
+# Type of Statistics
+# -------------------------
+HOURLY_STATS = 0
+DAILY_STATS = 1
+MONTHLY_STATS = 2 
+
+# -------------------------
+# Additional Configuration Constants 
+# -------------------------
+MAX_DEVICE_COUNT = 10  # Maximum number of devices allowed in discovery (optional configuration)
+RETRY_INTERVAL = 2  # Interval in seconds for retrying commands (optional configuration)
+
+# -------------------------
+# End of constants file
+# -------------------------
