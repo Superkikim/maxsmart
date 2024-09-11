@@ -1,5 +1,7 @@
-from maxsmart import MaxSmartDiscovery, MaxSmartDevice
+#!/usr/bin/env python3
+# test.py
 
+from maxsmart import MaxSmartDiscovery, MaxSmartDevice
 
 def display_table(header, data):
     print(f"{' | '.join(header)}")
