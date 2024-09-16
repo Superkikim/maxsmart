@@ -51,7 +51,7 @@ async def main():
     selected_device = await select_device(devices)
     if selected_device:
         ip = selected_device["ip"]  # Get the IP address of the selected device
-        device = MaxSmartDevice(ip=ip)  # Create an instance of MaxSmartDevice
+        device = MaxSmartDevice(ip)  # Create an instance of MaxSmartDevice
         # Retrieve the current port names
         try:
             port_mapping = await device.retrieve_port_names()  # Get a dictionary of port names asynchronously
