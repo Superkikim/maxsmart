@@ -104,6 +104,9 @@ from maxsmart import MaxSmartDevice
 # Create an instance of the MaxSmartDevice with the device's IP address
 device = MaxSmartDevice('192.168.0.25')
 
+# Ensure the device is initialized after instantiation
+await device.initialize_device()
+
 # Turn on port 1
 device.turn_on(1)
 
