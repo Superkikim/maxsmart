@@ -32,6 +32,12 @@ DISCOVERY_ERROR_MESSAGES = {
     },
 }
 
+ERROR_STATISTICS_NOT_AVAILABLE = {
+    "en": "Statistics are not available for this device version.",
+    "fr": "Les statistiques ne sont pas disponibles pour cette version de l'appareil.",
+    "es": "Las estadísticas no están disponibles para esta versión del dispositivo."
+}
+
 # Logging Messages for Discovery
 DISCOVERY_LOGGING_MESSAGES = {
     "en": {
