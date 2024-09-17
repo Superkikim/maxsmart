@@ -65,16 +65,25 @@ class MaxSmartDevice:
             # Set the strip name to the device name (for port 0)
             self.strip_name = self.name if self.name else DEFAULT_STRIP_NAME
 
-            # Set the port names from pname
+            # Logic to set port_names based on the number of ports as inferred from the sn
             if "pname" in primary_device:
-                self.port_names = primary_device["pname"]
+                self.port_names = primary_device["pname"]  # Utilisez pname si disponible
+            else:
+                # Vérifiez le 4ème caractère pour déterminer le nombre de ports
+                if len(self.sn) >= 4:  # Assurez-vous que s/n est assez long
+                    num_ports_char = self.sn[3]  # 4ème caractère, index 3
+                    if num_ports_char == '6':
+                        self.port_names = DEFAULT_PORT_NAMES  # Utilisez les noms par défaut pour 6 ports
+                    elif num_ports_char == '1':
+                        self.port_names = [self.name]  # Utilisez une liste avec le nom pour un seul port
+                    else:
+                        self.port_names = DEFAULT_PORT_NAMES  # Valeur par défaut si c'est un autre modèle
+                else:
+                    self.port_names = DEFAULT_PORT_NAMES  # Valeur par défaut si sn est trop court
 
-            # If the version is not what is expected, use default names
-            if self.version != "1.30":
-                self.port_names = DEFAULT_PORT_NAMES
         else:
             raise Exception("No devices found during discovery.")
-
+        
     def __repr__(self):
         return (
             f"MaxSmartDevice(ip={self.ip}, sn={self.sn}, name={self.name}, "
