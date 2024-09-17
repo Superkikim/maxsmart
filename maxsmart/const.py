@@ -7,8 +7,8 @@ DISCOVERY_MESSAGE = "00dv=all,{datetime};"  # UDP broadcast message template
 DEFAULT_TARGET_IP = "255.255.255.255"  # Default IP for broadcasting
 UDP_PORT = 8888  # Port for UDP communication
 
-# Set to desired timeout to adjust at run time with export UDP_TIMEOUT=5
-UDP_TIMEOUT = int(os.getenv("UDP_TIMEOUT", 2))  # timeout in seconds for wating on UDP responses. Default to 2 if not set
+# Set to desired timeout to adjust at run time with export UDP_TIMEOUT=<seconds>
+UDP_TIMEOUT = 2  # timeout in seconds for wating on UDP responses. Default to 2
 
 # Error Messages for Discovery
 DISCOVERY_ERROR_MESSAGES = {
