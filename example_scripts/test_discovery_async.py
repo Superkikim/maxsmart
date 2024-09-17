@@ -31,7 +31,7 @@ async def main():
     try:
         # Call the discover_maxsmart method
         devices = await MaxSmartDiscovery.discover_maxsmart(ip=ip_address, user_locale='en')
-        
+        print("\nRaw result: %s\n\n" % devices)
         # Output discovered devices
         if devices:
             logging.info("Discovered MaxSmart Devices:")
