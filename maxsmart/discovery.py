@@ -2,6 +2,7 @@ import asyncio
 import socket
 import json
 import datetime
+import os
 
 from .const import (
     DEFAULT_TARGET_IP,
@@ -33,7 +34,8 @@ class MaxSmartDiscovery:
         try:
             # Send the discovery message
             await loop.run_in_executor(None, sock.sendto, message.encode(), (target_ip, UDP_PORT))
-            sock.settimeout(UDP_TIMEOUT)
+
+            sock.settimeout(int(os.getenv("UDP_TIMEOUT", UDP_TIMEOUT)))
 
             while True:
                 try:
@@ -46,7 +48,7 @@ class MaxSmartDiscovery:
                     if device_data:
                         sn = device_data.get("sn", "N/A")
                         name = device_data.get("name", "Unknown")
-                        pname = device_data.get("pname", "N/A")
+                        pname = device_data.get("pname", [name])
                         ver = device_data.get("ver", "N/A")
 
                         maxsmart_device = {
