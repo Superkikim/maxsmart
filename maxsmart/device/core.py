@@ -1,4 +1,4 @@
-# device/core.py
+# maxsmart/device/core.py
 
 import aiohttp
 import asyncio
@@ -205,46 +205,75 @@ class MaxSmartDevice(
         if consumption_callback or state_callback:
             await self._setup_change_detection(consumption_callback, state_callback)
             
-    async def _setup_change_detection(self, consumption_callback, state_callback):
-        """Setup callbacks for detecting consumption and state changes."""
-        last_data = {"watt": [0] * 6, "switch": [0] * 6}
+    async def setup_realtime_monitoring_with_baseline(self, consumption_callback=None, state_callback=None, initial_watt=None, initial_switch=None):
+        """
+        Setup real-time monitoring with provided baseline values.
+        
+        Args:
+            consumption_callback: Called when consumption changes significantly
+            state_callback: Called when port states change
+            initial_watt: Initial watt values to use as baseline
+            initial_switch: Initial switch states to use as baseline
+        """
+        if not self.is_polling:
+            await self.start_adaptive_polling()
+            
+        # Setup change detection callbacks with baseline
+        if consumption_callback or state_callback:
+            await self._setup_change_detection_with_baseline(
+                consumption_callback, 
+                state_callback, 
+                initial_watt or [0] * 6, 
+                initial_switch or [0] * 6
+            )
+
+    async def _setup_change_detection_with_baseline(self, consumption_callback, state_callback, initial_watt, initial_switch):
+        """Setup callbacks for detecting consumption and state changes with baseline."""
+        last_data = {
+            "watt": initial_watt[:6] if initial_watt else [0] * 6, 
+            "switch": initial_switch[:6] if initial_switch else [0] * 6
+        }
         
         async def change_detector(poll_data):
-            device_data = poll_data.get("device_data", {})
-            current_watt = device_data.get("watt", [])
-            current_switch = device_data.get("switch", [])
-            
-            # Detect significant consumption changes (>1W)
-            if consumption_callback and current_watt:
-                for i, (curr, prev) in enumerate(zip(current_watt, last_data["watt"])):
-                    if abs(curr - prev) > 1.0:
-                        await self._safe_callback(consumption_callback, {
-                            "port": i + 1,
-                            "port_name": self.port_names[i] if i < len(self.port_names) else f"Port {i+1}",
-                            "previous_watt": prev,
-                            "current_watt": curr,
-                            "change": curr - prev,
-                            "timestamp": poll_data["timestamp"]
-                        })
-                        
-            # Detect state changes
-            if state_callback and current_switch:
-                for i, (curr, prev) in enumerate(zip(current_switch, last_data["switch"])):
-                    if curr != prev:
-                        await self._safe_callback(state_callback, {
-                            "port": i + 1,
-                            "port_name": self.port_names[i] if i < len(self.port_names) else f"Port {i+1}",
-                            "previous_state": prev,
-                            "current_state": curr,
-                            "state_text": "ON" if curr else "OFF",
-                            "timestamp": poll_data["timestamp"]
-                        })
-                        
-            # Update last known values
-            if current_watt:
-                last_data["watt"] = current_watt[:]
-            if current_switch:
-                last_data["switch"] = current_switch[:]
+            try:
+                device_data = poll_data.get("device_data", {})
+                current_watt = device_data.get("watt", [])
+                current_switch = device_data.get("switch", [])
+                
+                # Detect significant consumption changes (>1W)
+                if consumption_callback and current_watt and len(current_watt) >= 6:
+                    for i, (curr, prev) in enumerate(zip(current_watt, last_data["watt"])):
+                        if abs(curr - prev) > 1.0:
+                            await self._safe_callback(consumption_callback, {
+                                "port": i + 1,
+                                "port_name": self.port_names[i] if i < len(self.port_names) else f"Port {i+1}",
+                                "previous_watt": prev,
+                                "current_watt": curr,
+                                "change": curr - prev,
+                                "timestamp": poll_data["timestamp"]
+                            })
+                            
+                # Detect state changes
+                if state_callback and current_switch and len(current_switch) >= 6:
+                    for i, (curr, prev) in enumerate(zip(current_switch, last_data["switch"])):
+                        if curr != prev:
+                            await self._safe_callback(state_callback, {
+                                "port": i + 1,
+                                "port_name": self.port_names[i] if i < len(self.port_names) else f"Port {i+1}",
+                                "previous_state": prev,
+                                "current_state": curr,
+                                "state_text": "ON" if curr else "OFF",
+                                "timestamp": poll_data["timestamp"]
+                            })
+                            
+                # Update last known values ONLY if we have valid data
+                if current_watt and len(current_watt) >= 6:
+                    last_data["watt"] = current_watt[:6]  # Take only first 6 values
+                if current_switch and len(current_switch) >= 6:
+                    last_data["switch"] = current_switch[:6]  # Take only first 6 values
+                    
+            except Exception as e:
+                logging.error(f"Error in change detector: {e}")
                 
         self.register_poll_callback("change_detector", change_detector)
         

@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 # show_consumption.py
 
+import asyncio
 from maxsmart import MaxSmartDiscovery, MaxSmartDevice
 from maxsmart.exceptions import DiscoveryError, ConnectionError
 
-def discover_devices():
+async def discover_devices():
     """Discover MaxSmart devices on the network."""
     print("Discovering MaxSmart devices...")
     try:
         discovery = MaxSmartDiscovery()
-        devices = discovery.discover_maxsmart()
+        devices = await discovery.discover_maxsmart()  # NOW ASYNC!
         return devices
     except ConnectionError as ce:
         print(f"Connection error occurred during discovery: {ce}")
@@ -39,13 +40,13 @@ def select_device(devices):
         except ValueError:
             print("Invalid input. Please enter a number.")
 
-def retrieve_consumption_data(device):
+async def retrieve_consumption_data(device):
     """Retrieve real-time consumption data for each port."""
     consumption_data = []
     try:
-        port_mapping = device.retrieve_port_names()
+        port_mapping = await device.retrieve_port_names()  # NOW ASYNC!
         for port in range(1, 7):
-            power_data = device.get_power_data(port)
+            power_data = await device.get_power_data(port)  # NOW ASYNC!
             watt_value = float(power_data["watt"])
             consumption_data.append([port_mapping[f"Port {port}"], watt_value])
     except Exception as e:
@@ -64,25 +65,47 @@ def display_table(header, data):
     for row in data:
         print(row_format.format(row[0], f"{row[1]:.2f}"))
 
-def main():
-    devices = discover_devices()
-    if not devices:
-        print("No MaxSmart devices found.")
-        return
+async def main():
+    """Main function - now async!"""
+    device = None
+    
+    try:
+        devices = await discover_devices()  # NOW ASYNC!
+        if not devices:
+            print("No MaxSmart devices found.")
+            return
 
-    selected_device = select_device(devices)
-    if not selected_device:
-        return
+        selected_device = select_device(devices)
+        if not selected_device:
+            return
 
-    print(f"\nSelected device: {selected_device['name']} (IP: {selected_device['ip']})")
-    device = MaxSmartDevice(selected_device['ip'])
+        print(f"\nSelected device: {selected_device['name']} (IP: {selected_device['ip']})")
+        device = MaxSmartDevice(selected_device['ip'])
+        
+        # Initialize device - REQUIRED for new version!
+        await device.initialize_device()
 
-    consumption_data = retrieve_consumption_data(device)
-    if consumption_data:
-        print("\nCurrent Consumption Data:")
-        display_table(["Port Name", "Watt"], consumption_data)
-    else:
-        print("Unable to retrieve consumption data.")
+        consumption_data = await retrieve_consumption_data(device)  # NOW ASYNC!
+        if consumption_data:
+            print("\nCurrent Consumption Data:")
+            display_table(["Port Name", "Watt"], consumption_data)
+        else:
+            print("Unable to retrieve consumption data.")
+            
+    except KeyboardInterrupt:
+        print("\n\nInterrupted by user (Ctrl+C)")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        import traceback
+        traceback.print_exc()
+    finally:
+        # Cleanup
+        if device:
+            try:
+                await device.close()  # REQUIRED cleanup!
+                print("Device closed successfully")
+            except Exception as e:
+                print(f"Error closing device: {e}")
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())  # RUN WITH ASYNCIO!

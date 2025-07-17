@@ -194,26 +194,17 @@ class AdaptivePollingMixin:
         if not self._poll_callbacks:
             return
             
-        # Call callbacks in parallel for better performance
-        tasks = []
+        # Call callbacks sequentially for safety
         for name, callback in self._poll_callbacks.items():
             try:
                 if asyncio.iscoroutinefunction(callback):
-                    tasks.append(asyncio.create_task(callback(poll_data)))
+                    await callback(poll_data)
                 else:
-                    # Run sync callbacks in executor
-                    tasks.append(asyncio.create_task(
-                        asyncio.get_event_loop().run_in_executor(None, callback, poll_data)
-                    ))
+                    # Run sync callback directly (they should be fast)
+                    callback(poll_data)
             except Exception as e:
-                logging.warning(f"Error creating callback task '{name}': {e}")
-                
-        # Wait for all callbacks to complete
-        if tasks:
-            try:
-                await asyncio.gather(*tasks, return_exceptions=True)
-            except Exception as e:
-                logging.warning(f"Error in callback execution: {e}")
+                logging.warning(f"Error in callback '{name}': {e}")
+                continue
                 
     # Enhanced command methods that trigger burst mode
     async def turn_on(self, port):
