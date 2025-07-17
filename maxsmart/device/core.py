@@ -15,11 +15,19 @@ from .control import ControlMixin
 from .statistics import StatisticsMixin
 from .configuration import ConfigurationMixin
 from .time import TimeMixin
+from .polling import AdaptivePollingMixin
 
 
-class MaxSmartDevice(CommandMixin, ControlMixin, StatisticsMixin, ConfigurationMixin, TimeMixin):
+class MaxSmartDevice(
+    CommandMixin, 
+    ControlMixin, 
+    StatisticsMixin, 
+    ConfigurationMixin, 
+    TimeMixin,
+    AdaptivePollingMixin
+):
     """
-    Main MaxSmart device class providing all functionality through mixins.
+    Main MaxSmart device class with adaptive polling that mimics the official app behavior.
     
     This class combines all device functionality:
     - CommandMixin: Low-level command sending with robust error handling
@@ -27,6 +35,7 @@ class MaxSmartDevice(CommandMixin, ControlMixin, StatisticsMixin, ConfigurationM
     - StatisticsMixin: Statistics and power monitoring
     - ConfigurationMixin: Port names and device configuration
     - TimeMixin: Device time management
+    - AdaptivePollingMixin: Adaptive polling (5s normal, 2s burst after commands)
     """
 
     # Session management configuration
@@ -34,12 +43,13 @@ class MaxSmartDevice(CommandMixin, ControlMixin, StatisticsMixin, ConfigurationM
     DEFAULT_CONNECTOR_LIMIT_PER_HOST = 5
     SESSION_TIMEOUT = 30.0  # seconds
     
-    def __init__(self, ip_address):
+    def __init__(self, ip_address, auto_polling=False):
         """
         Initialize a MaxSmart device with robust session management.
         
         Args:
             ip_address (str): IP address of the device
+            auto_polling (bool): Start polling automatically after initialization
         """
         # Validate IP address format
         import socket
@@ -50,6 +60,7 @@ class MaxSmartDevice(CommandMixin, ControlMixin, StatisticsMixin, ConfigurationM
             
         self.ip = ip_address
         self.user_locale = get_user_locale()  # Get user's locale from utils
+        self._auto_polling = auto_polling
 
         # Initialize default values
         self.strip_name = DEFAULT_STRIP_NAME
@@ -63,6 +74,9 @@ class MaxSmartDevice(CommandMixin, ControlMixin, StatisticsMixin, ConfigurationM
         # Session management
         self._session = None
         self._is_initialized = False
+
+        # Initialize all mixins
+        super().__init__()
 
     @property
     def session(self):
@@ -100,16 +114,23 @@ class MaxSmartDevice(CommandMixin, ControlMixin, StatisticsMixin, ConfigurationM
                 
         return self._session
 
-    async def initialize_device(self):
+    async def initialize_device(self, start_polling=None):
         """
         Perform device discovery and initialize properties with robust error handling.
         
+        Args:
+            start_polling (bool): Override auto_polling setting for this initialization
+            
         Raises:
             DiscoveryError: If device discovery fails
             MaxSmartConnectionError: If network connectivity issues occur
         """
         if self._is_initialized:
             logging.debug(f"Device {self.ip} already initialized")
+            # Start polling if requested and not already running
+            should_start_polling = start_polling if start_polling is not None else self._auto_polling
+            if should_start_polling and not self.is_polling:
+                await self.start_adaptive_polling()
             return
             
         try:
@@ -153,6 +174,11 @@ class MaxSmartDevice(CommandMixin, ControlMixin, StatisticsMixin, ConfigurationM
             self._is_initialized = True
             logging.info(f"Device initialized: {self.name} ({self.ip}) - FW: {self.version}")
             
+            # Start polling if requested
+            should_start_polling = start_polling if start_polling is not None else self._auto_polling
+            if should_start_polling:
+                await self.start_adaptive_polling()
+            
         except (DiscoveryError, MaxSmartConnectionError):
             # Re-raise discovery and connection errors as-is
             raise
@@ -163,6 +189,74 @@ class MaxSmartDevice(CommandMixin, ControlMixin, StatisticsMixin, ConfigurationM
                 self.user_locale,
                 detail=f"Device initialization failed: {type(e).__name__}: {e}"
             )
+
+    async def setup_realtime_monitoring(self, consumption_callback=None, state_callback=None):
+        """
+        Setup real-time monitoring with consumption and state change detection.
+        
+        Args:
+            consumption_callback: Called when consumption changes significantly (>1W)
+            state_callback: Called when port states change
+        """
+        if not self.is_polling:
+            await self.start_adaptive_polling()
+            
+        # Setup change detection callbacks
+        if consumption_callback or state_callback:
+            await self._setup_change_detection(consumption_callback, state_callback)
+            
+    async def _setup_change_detection(self, consumption_callback, state_callback):
+        """Setup callbacks for detecting consumption and state changes."""
+        last_data = {"watt": [0] * 6, "switch": [0] * 6}
+        
+        async def change_detector(poll_data):
+            device_data = poll_data.get("device_data", {})
+            current_watt = device_data.get("watt", [])
+            current_switch = device_data.get("switch", [])
+            
+            # Detect significant consumption changes (>1W)
+            if consumption_callback and current_watt:
+                for i, (curr, prev) in enumerate(zip(current_watt, last_data["watt"])):
+                    if abs(curr - prev) > 1.0:
+                        await self._safe_callback(consumption_callback, {
+                            "port": i + 1,
+                            "port_name": self.port_names[i] if i < len(self.port_names) else f"Port {i+1}",
+                            "previous_watt": prev,
+                            "current_watt": curr,
+                            "change": curr - prev,
+                            "timestamp": poll_data["timestamp"]
+                        })
+                        
+            # Detect state changes
+            if state_callback and current_switch:
+                for i, (curr, prev) in enumerate(zip(current_switch, last_data["switch"])):
+                    if curr != prev:
+                        await self._safe_callback(state_callback, {
+                            "port": i + 1,
+                            "port_name": self.port_names[i] if i < len(self.port_names) else f"Port {i+1}",
+                            "previous_state": prev,
+                            "current_state": curr,
+                            "state_text": "ON" if curr else "OFF",
+                            "timestamp": poll_data["timestamp"]
+                        })
+                        
+            # Update last known values
+            if current_watt:
+                last_data["watt"] = current_watt[:]
+            if current_switch:
+                last_data["switch"] = current_switch[:]
+                
+        self.register_poll_callback("change_detector", change_detector)
+        
+    async def _safe_callback(self, callback, data):
+        """Safely execute a callback with error handling."""
+        try:
+            if asyncio.iscoroutinefunction(callback):
+                await callback(data)
+            else:
+                callback(data)
+        except Exception as e:
+            logging.warning(f"Callback error: {e}")
 
     async def health_check(self):
         """
@@ -184,6 +278,7 @@ class MaxSmartDevice(CommandMixin, ControlMixin, StatisticsMixin, ConfigurationM
             return {
                 "status": "healthy",
                 "response_time": round(response_time * 1000, 2),  # milliseconds
+                "polling_active": self.is_polling,
                 "device": {
                     "name": self.name,
                     "ip": self.ip,
@@ -196,6 +291,7 @@ class MaxSmartDevice(CommandMixin, ControlMixin, StatisticsMixin, ConfigurationM
             return {
                 "status": "unhealthy",
                 "response_time": round(response_time * 1000, 2),  # milliseconds
+                "polling_active": self.is_polling,
                 "error": str(e),
                 "device": {
                     "name": self.name,
@@ -207,9 +303,10 @@ class MaxSmartDevice(CommandMixin, ControlMixin, StatisticsMixin, ConfigurationM
     def __repr__(self):
         """String representation of the device."""
         init_status = "initialized" if self._is_initialized else "not initialized"
+        polling_status = "polling" if self.is_polling else "not polling"
         return (
             f"MaxSmartDevice(ip={self.ip}, sn={self.sn}, name={self.name}, "
-            f"version={self.version}, {init_status})"
+            f"version={self.version}, {init_status}, {polling_status})"
         )
 
     async def close(self):
@@ -218,6 +315,10 @@ class MaxSmartDevice(CommandMixin, ControlMixin, StatisticsMixin, ConfigurationM
         
         This method is safe to call multiple times.
         """
+        # Stop polling first
+        await self.stop_adaptive_polling()
+        
+        # Close HTTP session
         if self._session and not self._session.closed:
             try:
                 await self._session.close()
