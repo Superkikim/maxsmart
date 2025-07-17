@@ -6,6 +6,7 @@ import logging
 from ..const import (
     DEFAULT_STRIP_NAME,
     DEFAULT_PORT_NAMES,
+    CMD_GET_DEVICE_DATA,
 )
 from ..utils import get_user_locale
 from ..discovery import MaxSmartDiscovery
@@ -79,7 +80,7 @@ class MaxSmartDevice(
         self._session = None
         self._is_initialized = False
 
-        # Initialize all mixins
+        # Initialize all mixins - call super() early so mixins can use our attributes
         super().__init__()
 
     @property
@@ -237,29 +238,6 @@ class MaxSmartDevice(
                 detail=f"Device initialization failed: {type(e).__name__}: {e}"
             )
 
-    def _convert_watt(self, raw_watt):
-        """
-        Convert raw watt value based on firmware version.
-        
-        Args:
-            raw_watt: Raw watt value from device
-            
-        Returns:
-            float: Converted watt value
-        """
-        return float(raw_watt) * self._watt_multiplier
-        
-    def _convert_watt_list(self, raw_watt_list):
-        """
-        Convert a list of raw watt values based on firmware version.
-        
-        Args:
-            raw_watt_list: List of raw watt values from device
-            
-        Returns:
-            list: List of converted watt values
-        """
-        return [self._convert_watt(watt) for watt in raw_watt_list]
     def _convert_watt(self, raw_watt):
         """
         Convert raw watt value based on firmware version.

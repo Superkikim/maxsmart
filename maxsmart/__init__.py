@@ -1,4 +1,4 @@
-# __init__.py
+# maxsmart/__init__.py
 
 __version__ = "2.0.0-beta2"
 

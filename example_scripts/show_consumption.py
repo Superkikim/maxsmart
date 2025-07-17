@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# show_consumption.py
+# example_scripts/show_consumption.py
 
 import asyncio
 from maxsmart import MaxSmartDiscovery, MaxSmartDevice
@@ -30,17 +30,29 @@ def select_device(devices):
     for i, device in enumerate(devices, start=1):
         fw_info = f" (FW: {device.get('ver', 'Unknown')})" if device.get('ver') else ""
         print(f"{i}. {device['name']} - {device['ip']}{fw_info}")
+    print("  R. Rescan network")
+    print("  0. Exit")
 
     while True:
-        choice = input("Select a device by number: ")
         try:
-            choice = int(choice)
-            if 1 <= choice <= len(devices):
-                return devices[choice - 1]
+            choice = input("Select device number, R to rescan, or 0 to exit: ").strip()
+            
+            if choice == "0":
+                return "exit"
+            elif choice.upper() == "R":
+                return "rescan"
+            
+            choice_int = int(choice)
+            if 1 <= choice_int <= len(devices):
+                return devices[choice_int - 1]
             else:
-                print("Invalid choice. Please select a number from the list.")
+                print(f"Invalid choice. Please enter 1-{len(devices)}, R, or 0.")
+                
         except ValueError:
-            print("Invalid input. Please enter a number.")
+            print("Invalid input. Please enter a number, R, or 0.")
+        except (KeyboardInterrupt, EOFError):
+            print("\nAborted by user")
+            return "exit"
 
 async def retrieve_consumption_data(device):
     """Retrieve real-time consumption data for each port using centralized conversion."""
@@ -123,31 +135,10 @@ async def show_device_info(device):
     
     print(f"{'='*60}")
 
-async def main_loop():
-    """Main application loop with device selection."""
+async def device_loop(device):
+    """Handle operations for a single device with refresh capability."""
     while True:
-        device = None
-        
         try:
-            # Discover devices
-            devices = await discover_devices()
-            if not devices:
-                print("No MaxSmart devices found.")
-                choice = input("Try again? (y/N): ")
-                if choice.lower() != 'y':
-                    break
-                continue
-
-            # Select device
-            selected_device = select_device(devices)
-            if not selected_device:
-                break
-
-            # Create and initialize device
-            print(f"\nConnecting to {selected_device['name']} ({selected_device['ip']})...")
-            device = MaxSmartDevice(selected_device['ip'])
-            await device.initialize_device()
-            
             # Show device info
             await show_device_info(device)
 
@@ -170,34 +161,113 @@ async def main_loop():
                 
             # Ask what to do next
             print(f"\nOptions:")
-            print("  1. Refresh data")
+            print("  1. Refresh data (same device)")
             print("  2. Select different device") 
             print("  3. Exit")
             
-            choice = input("\nSelect option (1-3): ")
+            try:
+                choice = input("\nSelect option (1-3): ")
+            except (KeyboardInterrupt, EOFError):
+                print("\nAborted by user")
+                return "exit"
             
             if choice == "1":
-                # Refresh current device data
+                # Refresh current device data - stay in device loop
+                print("\n" + "="*40)
+                print("REFRESHING DATA...")
+                print("="*40)
                 continue
             elif choice == "2":
-                # Go back to device selection
-                await device.close()
-                device = None
-                continue
+                # Go back to device selection - exit device loop
+                return "select_different"
+            elif choice == "3":
+                # Exit completely
+                return "exit"
             else:
-                # Exit
+                print("Invalid choice. Please enter 1, 2, or 3.")
+                
+        except (KeyboardInterrupt, EOFError):
+            print("\nAborted by user")
+            return "exit"
+        except Exception as e:
+            print(f"Error in device operations: {e}")
+            
+            try:
+                retry = input("Retry with same device? (y/N): ")
+                if retry.lower() != 'y':
+                    return "select_different"
+            except (KeyboardInterrupt, EOFError):
+                print("\nAborted by user")
+                return "exit"
+
+async def main_loop():
+    """Main application loop with device selection."""
+    # Initial discovery at startup
+    print("🔍 Scanning network for MaxSmart devices...")
+    devices = await discover_devices()
+    
+    if not devices:
+        print("❌ No MaxSmart devices found on initial scan.")
+        try:
+            choice = input("Exit? (Y/n): ")
+            if choice.lower() != 'n':
+                return
+        except (KeyboardInterrupt, EOFError):
+            print("\nAborted by user")
+            return
+    else:
+        print(f"✅ Found {len(devices)} device(s)")
+    
+    while True:
+        device = None
+        
+        try:
+            # Select device from cached list
+            selected_device = select_device(devices)
+            if not selected_device or selected_device == "exit":
                 break
+            elif selected_device == "rescan":
+                # Rescan network
+                print("\n🔍 Rescanning network...")
+                devices = await discover_devices()
+                if not devices:
+                    print("❌ No devices found after rescan.")
+                    continue
+                else:
+                    print(f"✅ Found {len(devices)} device(s) after rescan")
+                continue
+
+            # Create and initialize device
+            print(f"\nConnecting to {selected_device['name']} ({selected_device['ip']})...")
+            device = MaxSmartDevice(selected_device['ip'])
+            await device.initialize_device()
+            
+            # Enter device-specific operations loop
+            result = await device_loop(device)
+            
+            if result == "exit":
+                break
+            elif result == "select_different":
+                # Continue to select a different device
+                continue
                 
         except KeyboardInterrupt:
-            print("\n\nInterrupted by user (Ctrl+C)")
+            print("\n\nAborted by user (Ctrl+C)")
+            break
+        except EOFError:
+            print("\n\nAborted by user")
             break
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
             import traceback
             traceback.print_exc()
             
-            choice = input("Continue? (y/N): ")
-            if choice.lower() != 'y':
+            try:
+                choice = input("Continue? (y/N): ")
+                if choice.lower() != 'y':
+                    break
+            except (KeyboardInterrupt, EOFError):
+                print("\nAborted by user")
                 break
         finally:
             # Cleanup
