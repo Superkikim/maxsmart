@@ -14,19 +14,20 @@ setup(
     url='https://github.com/superkikim/maxsmart',
     packages=find_packages(),  # Automatically find packages
     install_requires=[
-        'requests', 'asyncio'
+        'aiohttp',  # Replaced requests with aiohttp for async support
+        # Note: asyncio is built-in to Python 3.7+ so no need to specify it
     ],
     classifiers=[
-        'Development Status :: 4 - Beta',  # Change to 5 - Production/Stable when you are ready
+        'Development Status :: 4 - Beta',  # Changed to Beta since this is 2.0.0-beta2
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.7',  # Updated minimum version for async support
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
     ],
-    python_requires='>=3.6',  # Optional: Specify compatible Python versions
+    python_requires='>=3.7',  # Async/await requires Python 3.7+
     license='MIT',  # Specify the license type
 )
-

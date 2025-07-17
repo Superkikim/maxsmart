@@ -71,6 +71,8 @@ DEVICE_ERROR_MESSAGES = {
         "ERROR_INVALID_PARAMETERS": "Invalid parameters provided for the operation.",
         "ERROR_INVALID_TYPE": "Invalid type. Must be 0 (hourly), 1 (daily), or 2 (monthly).",
         "ERROR_UNEXPECTED": "Unexpected error occurred: {detail}",
+        "ERROR_INVALID_JSON": "Received invalid JSON data.",
+        "ERROR_MISSING_EXPECTED_DATA": "Missing expected data in device response.",
     },
     "fr": {
         "ERROR_INVALID_PORT": "Numéro de port invalide.",
@@ -82,6 +84,8 @@ DEVICE_ERROR_MESSAGES = {
         "ERROR_INVALID_PARAMETERS": "Paramètres invalides fournis pour l'opération.",
         "ERROR_INVALID_TYPE": "Type invalide. Doit être 0 (horaire), 1 (journalier) ou 2 (mensuel).",
         "ERROR_UNEXPECTED": "Une erreur inattendue s'est produite : {detail}",
+        "ERROR_INVALID_JSON": "Données JSON invalides reçues.",
+        "ERROR_MISSING_EXPECTED_DATA": "Données attendues manquantes dans la réponse de l'appareil.",
     },
     "de": {
         "ERROR_INVALID_PORT": "Ungültige Portnummer.",
@@ -93,6 +97,8 @@ DEVICE_ERROR_MESSAGES = {
         "ERROR_INVALID_PARAMETERS": "Ungültige Parameter für die Operation bereitgestellt.",
         "ERROR_INVALID_TYPE": "Ungültiger Typ. Muss 0 (stündlich), 1 (täglich) oder 2 (monatlich) sein.",
         "ERROR_UNEXPECTED": "Unerwartete Fehler: {detail}",
+        "ERROR_INVALID_JSON": "Ungültige JSON-Daten empfangen.",
+        "ERROR_MISSING_EXPECTED_DATA": "Erwartete Daten in der Geräteantwort fehlen.",
     },
 }
 
@@ -203,6 +209,7 @@ CMD_SET_PORT_STATE = 200  # Command to set the state (on/off) of a specific port
 CMD_GET_DEVICE_DATA = 511  # Command to get various data from the device (wattage, amperage, switch states)
 CMD_GET_STATISTICS = 510  # Command to get statistics
 CMD_SET_PORT_NAME = 201  # Command to set or change the name of a specific port
+CMD_GET_DEVICE_TIME = 502  # Command to query device date and time
 
 # -------------------------
 # Default Values

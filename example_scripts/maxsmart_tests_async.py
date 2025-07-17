@@ -61,11 +61,10 @@ async def select_device(devices):
 
 async def confirm_proceed(name, ip, sn):
     """Confirm with the user before proceeding with operations."""
-    print("WARNING: This test will power down all devices plugged into the power strip.")
-    print(f"Name: {name}, IP: {ip}, SN: {sn}")
-    proceed = input("Do you want to proceed? (Y/N, default is Y): ")
+    print(f"Selected device: {name}, IP: {ip}, SN: {sn}")
+    proceed = input("Continue with this device? (Y/N, default is Y): ")
     if proceed.strip().lower() not in ("y", ""):
-        print("Test aborted.")
+        print("Aborted.")
         return False
     return True
 
@@ -95,25 +94,110 @@ async def select_power_action():
         else:
             print("Invalid choice. Please enter 1 to power ON or 2 to power OFF.")
 
-async def power_on_port(powerstrip, port):
-    """Power on a specified port."""
-    print(f"Powering ON port {port}...")
+async def check_master_port_state(powerstrip):
+    """Check the state of master port (port 0) by checking all individual ports."""
     try:
-        await powerstrip.turn_on(port)  # Make turn_on async
+        all_states = await powerstrip.check_state()  # Get all port states
+        all_on = all(state == 1 for state in all_states)
+        all_off = all(state == 0 for state in all_states)
+        
+        if all_on:
+            print("Master port (Port 0): All ports are ON")
+            return 1
+        elif all_off:
+            print("Master port (Port 0): All ports are OFF") 
+            return 0
+        else:
+            on_count = sum(all_states)
+            print(f"Master port (Port 0): Mixed state - {on_count}/6 ports ON")
+            return -1  # Mixed state
     except Exception as e:
-        print(f"Error while attempting to power ON port {port}: {e}")
+        print(f"❌ Error checking master port state: {e}")
+        return None
+
+async def power_on_master_port(powerstrip):
+    """Power on master port (port 0) and verify all ports are on."""
+    print("Powering ON master port (all ports)...")
+    try:
+        await powerstrip.turn_on(0)
+        # Check state to confirm all ports are on
+        all_states = await powerstrip.check_state()
+        all_on = all(state == 1 for state in all_states)
+        
+        if all_on:
+            print("✅ Master port (Port 0): All ports are now ON")
+        else:
+            on_count = sum(all_states)
+            print(f"⚠️ Master port (Port 0): Only {on_count}/6 ports turned ON")
+    except Exception as e:
+        print(f"❌ Error powering ON master port: {e}")
+
+async def power_off_master_port(powerstrip):
+    """Power off master port (port 0) and verify all ports are off."""
+    print("Powering OFF master port (all ports)...")
+    try:
+        await powerstrip.turn_off(0)
+        # Check state to confirm all ports are off
+        all_states = await powerstrip.check_state()
+        all_off = all(state == 0 for state in all_states)
+        
+        if all_off:
+            print("✅ Master port (Port 0): All ports are now OFF")
+        else:
+            on_count = sum(all_states)
+            print(f"⚠️ Master port (Port 0): {on_count}/6 ports still ON")
+    except Exception as e:
+        print(f"❌ Error powering OFF master port: {e}")
+
+async def check_port_state(powerstrip, port):
+    """Check and display the current state of a port."""
+    try:
+        if port == 0:
+            # Master port - check all individual ports
+            return await check_master_port_state(powerstrip)
+        else:
+            # Individual port
+            state = await powerstrip.check_state(port)
+            state_text = "ON" if state == 1 else "OFF"
+            print(f"Port {port} current state: {state_text}")
+            return state
+    except Exception as e:
+        print(f"❌ Error checking port {port} state: {e}")
+        return None
+
+async def power_on_port(powerstrip, port):
+    """Power on a specified port and verify state."""
+    if port == 0:
+        await power_on_master_port(powerstrip)
+    else:
+        print(f"Powering ON port {port}...")
+        try:
+            await powerstrip.turn_on(port)
+            # Check state to confirm
+            state = await powerstrip.check_state(port)
+            if state == 1:
+                print(f"✅ Port {port} is now ON")
+            else:
+                print(f"❌ Port {port} failed to turn ON (state: {state})")
+        except Exception as e:
+            print(f"❌ Error while attempting to power ON port {port}: {e}")
 
 async def power_off_port(powerstrip, port):
-    """Power off a specified port and wait 15 seconds."""
-    print(f"Powering OFF port {port}...")
-    try:
-        await powerstrip.turn_off(port)  # Make turn_off async
-    except Exception as e:
-        print(f"Error while attempting to power OFF port {port}: {e}")
-
-async def check_state(selected_device, port):
-    """Check the state of the specified port using the selected_device instance."""
-    return await selected_device.check_port_state(port)  # Make this call async
+    """Power off a specified port and verify state."""
+    if port == 0:
+        await power_off_master_port(powerstrip)
+    else:
+        print(f"Powering OFF port {port}...")
+        try:
+            await powerstrip.turn_off(port)
+            # Check state to confirm
+            state = await powerstrip.check_state(port)
+            if state == 0:
+                print(f"✅ Port {port} is now OFF")
+            else:
+                print(f"❌ Port {port} failed to turn OFF (state: {state})")
+        except Exception as e:
+            print(f"❌ Error while attempting to power OFF port {port}: {e}")
 
 async def retrieve_consumption_data(selected_strip):
     """Retrieve real-time consumption data for each port and return it."""
@@ -165,9 +249,24 @@ async def test_data_retrieval(device):
 async def retrieve_time_based_data(powerstrip, data_type):
     """Retrieve hourly, daily, or monthly data for the strip."""
     print(f"Retrieving {data_type} consumption data...")
-    data = []
-    date_info = None
-    for port in range(7):  # 0 to 6
+    
+    # Get data for all ports (port 0 = sum of all ports)
+    try:
+        if data_type == 'hourly':
+            all_ports_data = await powerstrip.get_statistics(0, 0)
+        elif data_type == 'daily':
+            all_ports_data = await powerstrip.get_statistics(0, 1)
+        elif data_type == 'monthly':
+            all_ports_data = await powerstrip.get_statistics(0, 2)
+        else:
+            raise ValueError(f"Invalid data type: {data_type}")
+    except Exception as e:
+        print(f"Error retrieving {data_type} data: {e}")
+        return None, None
+    
+    # Get individual port data
+    individual_ports_data = []
+    for port in range(1, 7):  # Ports 1 to 6
         try:
             if data_type == 'hourly':
                 port_data = await powerstrip.get_statistics(port, 0)
@@ -175,22 +274,33 @@ async def retrieve_time_based_data(powerstrip, data_type):
                 port_data = await powerstrip.get_statistics(port, 1)
             elif data_type == 'monthly':
                 port_data = await powerstrip.get_statistics(port, 2)
-            else:
-                raise ValueError(f"Invalid data type: {data_type}")
             
-            data.append(port_data['watt'])
-            if date_info is None:
-                date_info = {
-                    'year': port_data['year'],
-                    'month': port_data['month'],
-                    'day': port_data['day'],
-                    'hour': port_data['hour']
-                }
-                print(f"Retrieved date_info for {data_type}: {date_info}")  # Debug print
+            individual_ports_data.append(port_data['watt'])
         except Exception as e:
             print(f"Error retrieving {data_type} data for port {port}: {e}")
-            data.append([])
-    return data, date_info
+            individual_ports_data.append([0] * len(all_ports_data['watt']))  # Fill with zeros
+    
+    # Structure the data for plotting
+    structured_data = {
+        'watt': all_ports_data['watt'],  # Total consumption
+        'year': all_ports_data['year'],
+        'month': all_ports_data['month'],
+        'day': all_ports_data['day'],
+        'hour': all_ports_data['hour'],
+        'cost': all_ports_data.get('cost', 0),
+        'currency': all_ports_data.get('currency', '$')
+    }
+    
+    # Add individual port data
+    for i, port_data in enumerate(individual_ports_data, 1):
+        structured_data[f'watt_{i}'] = port_data
+    
+    return structured_data, {
+        'year': all_ports_data['year'],
+        'month': all_ports_data['month'],
+        'day': all_ports_data['day'],
+        'hour': all_ports_data['hour']
+    }
 
 async def retrieve_hourly_data(powerstrip):
     return await retrieve_time_based_data(powerstrip, 'hourly')
@@ -200,13 +310,6 @@ async def retrieve_daily_data(powerstrip):
 
 async def retrieve_monthly_data(powerstrip):
     return await retrieve_time_based_data(powerstrip, 'monthly')
-
-async def countdown(seconds):
-    """Display a countdown timer."""
-    for i in range(seconds, 0, -1):
-        print(f"Countdown: {i} seconds remaining ", end='\r')
-        await asyncio.sleep(1)  # Use asyncio.sleep to keep it non-blocking
-    print("                                 ", end='\r')
 
 def display_table(header, data):
     """Display data in a formatted table."""
@@ -226,47 +329,77 @@ def display_table(header, data):
             watt_value = " " + watt_value
         print(row_format.format(row[0], watt_value))
 
-def plot_chandelle_diagram(port_mapping, data, data_type):
+def get_units_and_divisor(firmware_version, data_type):
+    """Get appropriate units and divisor based on firmware version."""
+    if firmware_version == "1.30":
+        # v1.30 returns watts
+        if data_type == 'hourly':
+            return "W", 1
+        elif data_type == 'daily':
+            return "kWh", 1000  # Convert W to kWh for daily
+        elif data_type == 'monthly':
+            return "kWh", 1000  # Convert W to kWh for monthly
+    else:
+        # v2.11+ returns kWh
+        return "kWh", 1
+
+def plot_chandelle_diagram(port_mapping, data, data_type, firmware_version):
+    """Plot consumption data with proper units based on firmware version."""
     fig, ax = plt.subplots(figsize=(15, 8))
+    
+    # Get units and divisor
+    units, divisor = get_units_and_divisor(firmware_version, data_type)
     
     num_data_points = len(data['watt'])
     x = np.arange(num_data_points)
     width = 0.35
     
-    # Plot data for port 0
-    ax.bar(x - width/2, data['watt'], width, label=port_mapping['Port 0'], color='blue', alpha=0.7)
+    # Plot data for total consumption (all ports)
+    total_data = [val / divisor for val in data['watt']]
+    ax.bar(x - width/2, total_data, width, label='Total', color='blue', alpha=0.7)
     
-    # Plot stacked data for ports 1-6
+    # Plot stacked data for individual ports 1-6
     bottom = np.zeros(num_data_points)
+    colors = ['red', 'green', 'orange', 'purple', 'brown', 'pink']
+    
     for i in range(1, 7):
-        ax.bar(x + width/2, data[f'watt_{i}'], width, bottom=bottom, label=port_mapping[f'Port {i}'], alpha=0.7)
-        bottom += np.array(data[f'watt_{i}'])
+        port_key = f'watt_{i}'
+        if port_key in data:
+            port_data = [val / divisor for val in data[port_key]]
+            port_name = port_mapping.get(f'Port {i}', f'Port {i}')
+            ax.bar(x + width/2, port_data, width, bottom=bottom, 
+                   label=port_name, color=colors[i-1], alpha=0.7)
+            bottom += np.array(port_data)
+    
+    # Set labels and title based on data type
+    ax.set_ylabel(f'Consumption ({units})')
     
     if data_type == 'hourly':
-        ax.set_ylabel('Consumption (W)')
         end_time = datetime(data['year'], data['month'], data['day'], data['hour'])
         hours = [(end_time - timedelta(hours=23-i)).strftime('%H:00') for i in range(24)]
         ax.set_xticks(x)
         ax.set_xticklabels(hours, rotation=45, ha='right')
         title = f"Hourly consumption data ending on {end_time.strftime('%d %B %Y at %H:00')}"
     elif data_type == 'daily':
-        ax.set_ylabel('Consumption (kWh)')
         end_date = datetime(data['year'], data['month'], data['day'])
         days = [(end_date - timedelta(days=29-i)).strftime('%d %b') for i in range(30)]
         ax.set_xticks(x)
         ax.set_xticklabels(days, rotation=45, ha='right')
         title = f"Daily consumption data ending on {end_date.strftime('%d %B %Y')}"
-        # Convert W to kWh
-        ax.set_yticklabels([f'{y/1000:.1f}' for y in ax.get_yticks()])
     elif data_type == 'monthly':
-        ax.set_ylabel('Consumption (kWh)')
         end_month = datetime(data['year'], data['month'], 1)
         months = [(end_month - timedelta(days=30*i)).strftime('%b %Y') for i in range(11, -1, -1)]
         ax.set_xticks(x)
         ax.set_xticklabels(months, rotation=45, ha='right')
         title = f"Monthly consumption data ending on {end_month.strftime('%B %Y')}"
-        # Convert W to kWh
-        ax.set_yticklabels([f'{y/1000:.1f}' for y in ax.get_yticks()])
+    
+    # Add firmware version and cost info to title
+    fw_info = f" (FW: {firmware_version})"
+    if 'cost' in data and 'currency' in data and data['cost'] > 0:
+        cost_info = f" - Cost: {data['cost']} {data['currency']}/kWh"
+        title += fw_info + cost_info
+    else:
+        title += fw_info
     
     ax.set_title(title)
     ax.legend(title='Ports', bbox_to_anchor=(1.05, 1), loc='upper left')
@@ -274,6 +407,7 @@ def plot_chandelle_diagram(port_mapping, data, data_type):
     plt.show()
       
 async def main():
+    selected_strip = None
     try:
         """Main function to run all tests."""
         devices = await discover_devices()  # Discover MaxSmart devices
@@ -285,83 +419,141 @@ async def main():
                 return
             
             selected_strip = MaxSmartDevice(selected_device["ip"])  # Create instance for the selected strip
+            await selected_strip.initialize_device()  # Initialize the device
             
             port_mapping = await selected_strip.retrieve_port_names()  # Retrieve current port names
-
-            '''
-            print(port_mapping)
-            port = await select_port(port_mapping)  # Get the port number from the user
-            action = await select_power_action()  # Ask user for the action they want to perform
+            firmware_version = selected_strip.version  # Get firmware version
             
-            if action == "1":  # Power ON
-                await power_on_port(selected_strip, port)  # Power ON the specified port
-                await countdown(10)  # Countdown after powering ON
-                await power_off_port(selected_strip, port)  # Power OFF the specified port
-                await countdown(10)  # Countdown after powering OFF
-            else:  # Power OFF
-                await power_off_port(selected_strip, port)  # Power OFF the specified port
-                await countdown(10)  # Countdown after powering OFF
-                await power_on_port(selected_strip, port)  # Power ON the specified port
-                await countdown(10)  # Countdown after powering ON
-                
-            # Testing Master port operations
-            print("WARNING: Turning off the master port (Port 0) will power off all devices plugged into the power strip.")
-            
-            proceed = input("Do you want to proceed? (Y/N): ")
-            if proceed.lower() != "y":
-                print("Operation aborted.")
-            else:
-                await power_off_port(selected_strip, 0)  # Power OFF the master port (and all connected devices)
-                await countdown(10)  
-                
-                # Display consumption data after turning off
-                print("Consumption data after powering OFF:")
-                consumption_data = await retrieve_consumption_data(selected_strip)  # Retrieve consumption data
-                display_table(["Port Name", "Watt"], consumption_data)  # Display the table with consumption data
-                
-                await power_on_port(selected_strip, 0)  # Power ON the master port (restoring power)
-                await countdown(10)  
-                
-                # Display consumption data after turning on
-                print("Consumption data after powering ON:")
-                consumption_data = await retrieve_consumption_data(selected_strip)  # Retrieve consumption data again
-                display_table(["Port Name", "Watt"], consumption_data)  # Display the table with consumption data
-            '''
+            print(f"Device firmware version: {firmware_version}")
 
-            # Hourly data
-            print("Displaying last 24 hours wattage for each port")
-            hourly_data, hourly_date_info = await retrieve_hourly_data(selected_strip)
-            if hourly_data and hourly_date_info:
-                await plot_chandelle_diagram(port_mapping, hourly_data, 'hourly')
-            else:
-                print("No hourly data available")
+            # Ask user what they want to test
+            while True:
+                try:
+                    print("\nWhat would you like to test?")
+                    print("1. Port Control (Turn ON/OFF)")
+                    print("2. Master Port Control (Turn all ON/OFF)")
+                    print("3. Real-time Consumption Data")
+                    print("4. Statistics and Graphs (Hourly/Daily/Monthly)")
+                    print("5. Raw Statistics Data")
+                    print("6. Exit")
+                    
+                    choice = input("Select an option (1-6): ")
+                    
+                    if choice == "1":
+                        # Port control testing
+                        port = await select_port(port_mapping)  # Get the port number from the user
+                        
+                        # First, check current state
+                        print(f"\nChecking current state of port {port}...")
+                        current_state = await check_port_state(selected_strip, port)
+                        
+                        if current_state is not None:
+                            action = await select_power_action()  # Ask user for the action they want to perform
+                            
+                            if action == "1":  # Power ON
+                                await power_on_port(selected_strip, port)
+                            else:  # Power OFF
+                                await power_off_port(selected_strip, port)
+                        
+                        input("\nPress Enter to continue...")  # Pause before returning to menu
+                    
+                    elif choice == "2":
+                        # Testing Master port operations
+                        print("Master Port Control - Controls all 6 ports simultaneously")
+                        
+                        # First, check current state
+                        print("Checking current state of master port (Port 0)...")
+                        current_state = await check_port_state(selected_strip, 0)
+                        
+                        if current_state is not None:
+                            action = await select_power_action()  # Ask user for the action they want to perform
+                            
+                            if action == "1":  # Power ON
+                                await power_on_port(selected_strip, 0)
+                            else:  # Power OFF
+                                await power_off_port(selected_strip, 0)
+                            
+                            # Display consumption data after the operation
+                            print("\nConsumption data after operation:")
+                            consumption_data = await retrieve_consumption_data(selected_strip)
+                            display_table(["Port Name", "Watt"], consumption_data)
+                        
+                        input("\nPress Enter to continue...")  # Pause before returning to menu
+                    
+                    elif choice == "3":
+                        # Real-time consumption data
+                        print("Current real-time consumption data:")
+                        consumption_data = await retrieve_consumption_data(selected_strip)
+                        display_table(["Port Name", "Watt"], consumption_data)
+                        input("\nPress Enter to continue...")  # Pause before returning to menu
+                    
+                    elif choice == "4":
+                        # Statistics and graphs
+                        print("Displaying statistics and graphs...")
+                        
+                        # Hourly data
+                        print("Displaying last 24 hours wattage for each port")
+                        hourly_data, hourly_date_info = await retrieve_hourly_data(selected_strip)
+                        if hourly_data and hourly_date_info:
+                            plot_chandelle_diagram(port_mapping, hourly_data, 'hourly', firmware_version)
+                        else:
+                            print("No hourly data available")
 
-            # Daily data
-            print("Displaying daily wattage for each port")
-            daily_data, daily_date_info = await retrieve_daily_data(selected_strip)
-            if daily_data and daily_date_info:
-                await plot_chandelle_diagram(port_mapping, daily_data, 'daily')
-            else:
-                print("No daily data available")
+                        # Daily data
+                        print("Displaying daily wattage for each port")
+                        daily_data, daily_date_info = await retrieve_daily_data(selected_strip)
+                        if daily_data and daily_date_info:
+                            plot_chandelle_diagram(port_mapping, daily_data, 'daily', firmware_version)
+                        else:
+                            print("No daily data available")
 
-            # Monthly data
-            print("Displaying monthly wattage for each port")
-            monthly_data, monthly_date_info = await retrieve_monthly_data(selected_strip)
-            if monthly_data and monthly_date_info:
-                await plot_chandelle_diagram(port_mapping, monthly_data, 'monthly')
-            else:
-                print("No monthly data available")
+                        # Monthly data
+                        print("Displaying monthly wattage for each port")
+                        monthly_data, monthly_date_info = await retrieve_monthly_data(selected_strip)
+                        if monthly_data and monthly_date_info:
+                            plot_chandelle_diagram(port_mapping, monthly_data, 'monthly', firmware_version)
+                        else:
+                            print("No monthly data available")
+                        
+                        input("\nPress Enter to continue...")  # Pause before returning to menu
+                    
+                    elif choice == "5":
+                        # Raw statistics data
+                        await test_data_retrieval(selected_strip)
+                        input("\nPress Enter to continue...")  # Pause before returning to menu
+                    
+                    elif choice == "6":
+                        print("Exiting...")
+                        break
+                    
+                    else:
+                        print("Invalid choice. Please select 1-6.")
+                
+                except KeyboardInterrupt:
+                    print("\n\nOperation interrupted by user (Ctrl+C)")
+                    break
+                except EOFError:
+                    print("\n\nInput interrupted by user")
+                    break
+                        
         else:
             print("No MaxSmart devices found.")  # Handle case where no devices are discovered
 
+    except KeyboardInterrupt:
+        print("\n\nAborted by user (Ctrl+C)")
+    except EOFError:
+        print("\n\nInput interrupted by user")
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
-    
+        import traceback
+        traceback.print_exc()
     finally:
-        # This ensures that the session is closed even if an exception occurs
-        if 'selected_strip' in locals():
-            await selected_strip.close()
+        # Always clean up the device connection
+        if selected_strip:
+            try:
+                await selected_strip.close()
+            except:
+                pass  # Ignore cleanup errors
 
 if __name__ == "__main__":
     asyncio.run(main())  # Execute the main function within an asyncio event loop
-

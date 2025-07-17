@@ -1,8 +1,11 @@
+# discovery.py
+
 import asyncio
 import socket
 import json
 import datetime
 import os
+import logging
 
 from .const import (
     DEFAULT_TARGET_IP,
@@ -17,76 +20,239 @@ from .exceptions import (
     UdpTimeoutInfo
 )
 
+
 class MaxSmartDiscovery:
+    """MaxSmart device discovery with robust error handling."""
+    
+    # Discovery configuration
+    DEFAULT_DISCOVERY_TIMEOUT = 2.0  # seconds - devices respond very quickly
+    MAX_DISCOVERY_ATTEMPTS = 3
+    SOCKET_RETRY_DELAY = 0.5  # seconds
+    
     @staticmethod
-    async def discover_maxsmart(ip=None, user_locale="en"):  # Ensure user_locale is set
-        maxsmart_devices = []
-        message = DISCOVERY_MESSAGE.format(datetime=datetime.datetime.now().strftime('%Y-%m-%d,%H:%M:%S'))
+    async def discover_maxsmart(ip=None, user_locale="en", timeout=None, max_attempts=None):
+        """
+        Discover MaxSmart devices with robust error handling and retry logic.
+        
+        :param ip: Specific IP to query (None for broadcast)
+        :param user_locale: User locale for error messages
+        :param timeout: Discovery timeout in seconds
+        :param max_attempts: Maximum discovery attempts
+        :return: List of discovered devices
+        
+        :raises DiscoveryError: For discovery-related errors
+        :raises ConnectionError: For network connectivity issues
+        """
+        # Use default values if not specified
+        if timeout is None:
+            timeout = float(os.getenv("UDP_TIMEOUT", MaxSmartDiscovery.DEFAULT_DISCOVERY_TIMEOUT))
+        if max_attempts is None:
+            max_attempts = MaxSmartDiscovery.MAX_DISCOVERY_ATTEMPTS
+            
         target_ip = ip if ip else DEFAULT_TARGET_IP
-
+        is_broadcast = (ip is None or ip == DEFAULT_TARGET_IP)
+        
+        # Validate IP format for unicast
+        if ip and ip != DEFAULT_TARGET_IP:
+            try:
+                socket.inet_aton(ip)
+            except socket.error:
+                raise DiscoveryError(
+                    "ERROR_INVALID_PARAMETERS",
+                    user_locale,
+                    detail=f"Invalid IP address format: {ip}"
+                )
+        
+        # Prepare discovery message
+        current_time = datetime.datetime.now().strftime('%Y-%m-%d,%H:%M:%S')
+        message = DISCOVERY_MESSAGE.format(datetime=current_time)
+        
+        maxsmart_devices = []
+        last_exception = None
+        
+        # Discovery attempt loop
+        for attempt in range(max_attempts):
+            try:
+                devices = await MaxSmartDiscovery._single_discovery_attempt(
+                    target_ip, message, timeout, user_locale, is_broadcast
+                )
+                
+                if devices:
+                    maxsmart_devices.extend(devices)
+                    
+                # For unicast, one successful response is enough
+                if not is_broadcast and devices:
+                    break
+                    
+                # For broadcast, continue collecting responses
+                if is_broadcast and attempt == 0:
+                    # First attempt successful, but continue for more devices
+                    continue
+                    
+            except (ConnectionError, DiscoveryError) as e:
+                last_exception = e
+                logging.debug(f"Discovery attempt {attempt + 1} failed: {e}")
+                
+                # For unicast failures, wait before retry
+                if not is_broadcast and attempt < max_attempts - 1:
+                    await asyncio.sleep(MaxSmartDiscovery.SOCKET_RETRY_DELAY * (attempt + 1))
+                    
+            except Exception as e:
+                # Unexpected errors
+                raise DiscoveryError(
+                    "ERROR_UNEXPECTED",
+                    user_locale,
+                    detail=f"Unexpected discovery error: {type(e).__name__}: {e}"
+                )
+        
+        # Remove duplicates based on IP address
+        seen_ips = set()
+        unique_devices = []
+        for device in maxsmart_devices:
+            if device["ip"] not in seen_ips:
+                seen_ips.add(device["ip"])
+                unique_devices.append(device)
+        
+        # Log discovery results
+        if unique_devices:
+            logging.info(f"Discovery successful: found {len(unique_devices)} device(s)")
+            return unique_devices
+        else:
+            # No devices found after all attempts
+            if last_exception:
+                raise last_exception
+            else:
+                # Timeout without errors - this is normal for broadcast discovery
+                if is_broadcast:
+                    UdpTimeoutInfo(user_locale)  # Log timeout info
+                    return []  # Return empty list for broadcast timeout
+                else:
+                    raise DiscoveryError("ERROR_NO_DEVICES_FOUND", user_locale)
+    
+    @staticmethod
+    async def _single_discovery_attempt(target_ip, message, timeout, user_locale, is_broadcast):
+        """
+        Perform a single discovery attempt with proper error handling.
+        
+        :param target_ip: Target IP address
+        :param message: Discovery message to send
+        :param timeout: Timeout for this attempt
+        :param user_locale: User locale for error messages
+        :param is_broadcast: Whether this is a broadcast discovery
+        :return: List of discovered devices in this attempt
+        """
         loop = asyncio.get_event_loop()
-
-        # Create a new UDP socket
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        sock.setblocking(False)  # Make socket non-blocking
-
+        sock = None
+        devices = []
+        
         try:
-            # Send the discovery message
-            await loop.run_in_executor(None, sock.sendto, message.encode(), (target_ip, UDP_PORT))
-
-            sock.settimeout(int(os.getenv("UDP_TIMEOUT", UDP_TIMEOUT)))
-
-            while True:
+            # Create and configure socket
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            
+            if is_broadcast:
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+                
+            sock.setblocking(False)
+            
+            # Bind to any available port
+            try:
+                sock.bind(('', 0))
+            except OSError as e:
+                raise ConnectionError(
+                    user_locale=user_locale,
+                    error_key="ERROR_NETWORK_ISSUE",
+                    detail=f"Failed to bind socket: {e}"
+                )
+            
+            # Send discovery message
+            try:
+                await loop.run_in_executor(
+                    None, sock.sendto, message.encode('utf-8'), (target_ip, UDP_PORT)
+                )
+            except OSError as e:
+                if "Network is unreachable" in str(e):
+                    raise ConnectionError(
+                        user_locale=user_locale,
+                        error_key="ERROR_NETWORK_ISSUE",
+                        detail="Network unreachable - check network connectivity"
+                    )
+                elif "No route to host" in str(e):
+                    raise ConnectionError(
+                        user_locale=user_locale,
+                        error_key="ERROR_NETWORK_ISSUE", 
+                        detail=f"No route to host {target_ip}"
+                    )
+                else:
+                    raise ConnectionError(
+                        user_locale=user_locale,
+                        error_key="ERROR_NETWORK_ISSUE",
+                        detail=f"Failed to send discovery message: {e}"
+                    )
+            
+            # Set socket timeout for receiving
+            sock.settimeout(timeout)
+            
+            # Collect responses
+            start_time = asyncio.get_event_loop().time()
+            while (asyncio.get_event_loop().time() - start_time) < timeout:
                 try:
-                    # Receive responses
+                    # Receive response
                     data, addr = await loop.run_in_executor(None, sock.recvfrom, 1024)
-                    raw_result = data.decode("utf-8", errors="replace")
-                    json_data = json.loads(raw_result)
-                    device_data = json_data.get("data", {})
-
-                    if device_data:
-                        sn = device_data.get("sn", "N/A")
-                        name = device_data.get("name", "Unknown")
-                        pname = device_data.get("pname", [name])
-                        ver = device_data.get("ver", "N/A")
-
-                        maxsmart_device = {
-                            "sn": sn,
-                            "name": name,
-                            "pname": pname,
-                            "ip": addr[0],
-                            "ver": ver,
-                        }
-                        maxsmart_devices.append(maxsmart_device)
-
-                    # Check if a specific IP is specified to stop after the first response
-                    if ip and ip != DEFAULT_TARGET_IP:
-                        break  # Exit loop after receiving the first response
-
+                    
+                    try:
+                        # Decode and parse response
+                        raw_result = data.decode("utf-8", errors="replace")
+                        json_data = json.loads(raw_result)
+                        device_data = json_data.get("data", {})
+                        
+                        if device_data:
+                            # Extract device information
+                            device = {
+                                "sn": device_data.get("sn", ""),
+                                "name": device_data.get("name", ""),
+                                "pname": device_data.get("pname", []),
+                                "ip": addr[0],
+                                "ver": device_data.get("ver", ""),
+                            }
+                            devices.append(device)
+                            
+                            # For unicast, one response is usually enough
+                            if not is_broadcast:
+                                break
+                                
+                    except json.JSONDecodeError as e:
+                        logging.warning(f"Received invalid JSON from {addr[0]}: {e}")
+                        continue
+                    except UnicodeDecodeError as e:
+                        logging.warning(f"Received invalid UTF-8 from {addr[0]}: {e}")
+                        continue
+                        
                 except socket.timeout:
-                    if not maxsmart_devices:
-                        # Log the UDP timeout situation
-                        UdpTimeoutInfo(user_locale)  # Raise the timeout error if no devices are found
-                    break  # Exit if the timeout occurs
-
-                except json.JSONDecodeError:
-                    # Raise the error using the utility method, which will also log the localized error message
-                    raise DiscoveryError("ERROR_INVALID_JSON", user_locale)
-
-                except KeyError as key_error:
-                    # Raise a custom error using the utility method
-                    raise DiscoveryError("ERROR_MISSING_EXPECTED_DATA", user_locale)  # Ensure correct usage
-
-        except OSError as e:
-            # Raise a custom error for network issues, ensuring user_locale is passed
-            raise ConnectionError(user_locale=user_locale, error_key="ERROR_NETWORK_ISSUE", detail=str(e))
-
+                    # Normal timeout - stop collecting responses
+                    break
+                except OSError as e:
+                    # Socket errors during receive
+                    if "Resource temporarily unavailable" in str(e):
+                        # Normal case when no more data available
+                        break
+                    else:
+                        logging.warning(f"Socket error during receive: {e}")
+                        break
+                        
+        except Exception as e:
+            # Handle any other unexpected errors
+            raise DiscoveryError(
+                "ERROR_UNEXPECTED",
+                user_locale,
+                detail=f"Discovery attempt failed: {type(e).__name__}: {e}"
+            )
         finally:
-            sock.close()  # Ensure the socket is closed
-
-        if not maxsmart_devices:
-            # Raise if no devices were discovered
-            raise DiscoveryError("ERROR_NO_DEVICES_FOUND", user_locale)  # Ensure correct usage
-
-        return maxsmart_devices
+            # Always close the socket
+            if sock:
+                try:
+                    sock.close()
+                except:
+                    pass  # Ignore close errors
+        
+        return devices
