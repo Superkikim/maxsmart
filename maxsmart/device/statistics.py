@@ -1,4 +1,4 @@
-# device/statistics.py
+# maxsmart/device/statistics.py
 
 from ..exceptions import StateError, CommandError, DeviceOperationError
 from ..const import (
@@ -72,16 +72,16 @@ class StatisticsMixin:
             else:
                 raise ValueError(f"Invalid stat_type: {stat_type}")
 
-            # If port is 0, sum the watt data across all ports
+            # If port is 0, sum the watt data across all ports with conversion
             if port == 0:
                 summed_watt = [
-                    sum(float(value) for value in port_data)
+                    sum(self._convert_watt(value) for value in port_data)
                     for port_data in zip(*watt_data)
                 ]
             else:  # For specific port
                 if not watt_data or (port - 1) >= len(watt_data):
                     raise StateError("ERROR_MISSING_EXPECTED_DATA", self.user_locale)
-                summed_watt = [float(value) for value in watt_data[port - 1]]
+                summed_watt = [self._convert_watt(value) for value in watt_data[port - 1]]
 
             # Construct result
             result = {
@@ -118,10 +118,16 @@ class StatisticsMixin:
             response = await self._send_command(CMD_GET_DEVICE_DATA, params=None)
             data = response.get("data", {})
             watt = data.get("watt", [])
+            
             if not watt or port < 1 or port > len(watt):
                 raise StateError(
                     f"No watt data received or invalid port number: {port}"
                 )
-            return {"watt": watt[port - 1]}
+            
+            raw_watt = watt[port - 1]
+            converted_watt = self._convert_watt(raw_watt)
+            
+            return {"watt": converted_watt}
+            
         except CommandError as e:
             raise CommandError(f"Failed to get power data for port {port}: {str(e)}")

@@ -70,6 +70,10 @@ class MaxSmartDevice(
         self.sn = None
         self.name = None
         self.version = None
+        
+        # Firmware-specific conversion factor (auto-detected after initialization)
+        self._watt_multiplier = 1.0  # Default
+        self._watt_format = "unknown"  # Will be detected
 
         # Session management
         self._session = None
@@ -172,7 +176,50 @@ class MaxSmartDevice(
                     self.port_names = DEFAULT_PORT_NAMES  # Default if sn too short or empty
 
             self._is_initialized = True
-            logging.info(f"Device initialized: {self.name} ({self.ip}) - FW: {self.version}")
+            
+            # Auto-detect watt format based on first data sample
+            try:
+                # Get a sample to detect format
+                test_response = await self._send_command(CMD_GET_DEVICE_DATA)
+                test_data = test_response.get("data", {})
+                test_watt = test_data.get("watt", [])
+                
+                if test_watt:
+                    sample_value = test_watt[0]
+                    logging.debug(f"Auto-detection sample: {sample_value} (type: {type(sample_value)})")
+                    
+                    # Check if it's a string (float format like "5.20")
+                    if isinstance(sample_value, str):
+                        self._watt_multiplier = 1.0  # String floats are in watts
+                        self._watt_format = "string_float"
+                        logging.info(f"Auto-detected format: string float (watts) - sample: {sample_value}")
+                    else:
+                        # It's an integer/number, check magnitude to distinguish watts vs milliwatts
+                        float_value = float(sample_value)
+                        if float_value > 100:  # Likely milliwatts (anything >100 is probably mW)
+                            self._watt_multiplier = 0.001  # Convert milliwatts to watts
+                            self._watt_format = "int_milliwatt"
+                            logging.info(f"Auto-detected format: integer milliwatts - sample: {sample_value}")
+                        else:
+                            self._watt_multiplier = 1.0  # Integer watts (rare but possible)
+                            self._watt_format = "int_watt"
+                            logging.info(f"Auto-detected format: integer watts - sample: {sample_value}")
+                else:
+                    raise ValueError("No watt data in sample")
+                    
+            except Exception as e:
+                # If detection fails, use firmware-based fallback
+                logging.warning(f"Auto-detection failed: {e}, using firmware-based detection")
+                if self.version in ["2.11", "3.49"]:
+                    self._watt_multiplier = 0.001
+                    self._watt_format = "fallback_milliwatt"
+                    logging.info(f"Fallback: firmware v{self.version} → milliwatt conversion")
+                else:
+                    self._watt_multiplier = 1.0
+                    self._watt_format = "fallback_watt"
+                    logging.info(f"Fallback: firmware v{self.version} → direct watts")
+            
+            logging.info(f"Device initialized: {self.name} ({self.ip}) - FW: {self.version} - Format: {self._watt_format}")
             
             # Start polling if requested
             should_start_polling = start_polling if start_polling is not None else self._auto_polling
@@ -189,6 +236,53 @@ class MaxSmartDevice(
                 self.user_locale,
                 detail=f"Device initialization failed: {type(e).__name__}: {e}"
             )
+
+    def _convert_watt(self, raw_watt):
+        """
+        Convert raw watt value based on firmware version.
+        
+        Args:
+            raw_watt: Raw watt value from device
+            
+        Returns:
+            float: Converted watt value
+        """
+        return float(raw_watt) * self._watt_multiplier
+        
+    def _convert_watt_list(self, raw_watt_list):
+        """
+        Convert a list of raw watt values based on firmware version.
+        
+        Args:
+            raw_watt_list: List of raw watt values from device
+            
+        Returns:
+            list: List of converted watt values
+        """
+        return [self._convert_watt(watt) for watt in raw_watt_list]
+    def _convert_watt(self, raw_watt):
+        """
+        Convert raw watt value based on firmware version.
+        
+        Args:
+            raw_watt: Raw watt value from device
+            
+        Returns:
+            float: Converted watt value
+        """
+        return float(raw_watt) * self._watt_multiplier
+        
+    def _convert_watt_list(self, raw_watt_list):
+        """
+        Convert a list of raw watt values based on firmware version.
+        
+        Args:
+            raw_watt_list: List of raw watt values from device
+            
+        Returns:
+            list: List of converted watt values
+        """
+        return [self._convert_watt(watt) for watt in raw_watt_list]
 
     async def setup_realtime_monitoring(self, consumption_callback=None, state_callback=None):
         """

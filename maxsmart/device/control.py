@@ -1,4 +1,4 @@
-# device/control.py
+# maxsmart/device/control.py
 
 from ..exceptions import StateError, CommandError, DeviceOperationError
 from ..const import CMD_SET_PORT_STATE, CMD_GET_DEVICE_DATA
@@ -73,8 +73,8 @@ class ControlMixin:
             if switch_states is None or wattages is None:
                 raise CommandError("ERROR_MISSING_EXPECTED_DATA", self.user_locale)
 
-            # Convert wattage values to float
-            watt_value = [float(watt) for watt in wattages]
+            # Convert wattage values using centralized conversion
+            watt_value = self._convert_watt_list(wattages)
 
             # Return the structured data
             return {"switch": switch_states, "watt": watt_value}
