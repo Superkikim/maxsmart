@@ -1,6 +1,10 @@
 # MaxSmart Python Module
 
-**Version:** 2.0.0-beta2
+[![PyPI version](https://badge.fury.io/py/maxsmart.svg)](https://badge.fury.io/py/maxsmart)
+[![Python versions](https://img.shields.io/pypi/pyversions/maxsmart.svg)](https://pypi.org/project/maxsmart/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+**Version:** 2.0.0
 
 A comprehensive Python library for controlling Revogi-based Max Hauri MaxSmart PowerStrips and Smart Plugs over local network. Features intelligent auto-detection, adaptive polling, real-time monitoring, and robust async architecture.
 
@@ -39,7 +43,7 @@ The module automatically detects your device's data format:
 
 ### From PyPI
 ```bash
-pip install --pre maxsmart
+pip install maxsmart
 ```
 
 ### From Source
