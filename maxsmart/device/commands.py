@@ -53,7 +53,8 @@ class CommandMixin:
             raise CommandError(
                 "ERROR_INVALID_PARAMETERS",
                 self.user_locale,
-                detail=f"Invalid command {cmd}. Must be one of {', '.join(map(str, valid_commands))}.",
+                ip=self.ip,
+                detail=f"Invalid command {cmd}. Must be one of {', '.join(map(str, valid_commands))}."
             )
 
         # Construct the URL with parameters, if any
@@ -65,7 +66,8 @@ class CommandMixin:
                 raise CommandError(
                     "ERROR_INVALID_PARAMETERS",
                     self.user_locale,
-                    detail=f"Failed to serialize parameters: {e}",
+                    ip=self.ip,
+                    detail=f"Failed to serialize parameters: {e}"
                 )
 
         # Retry loop with exponential backoff
@@ -87,20 +89,25 @@ class CommandMixin:
                         if response.status == 404:
                             raise MaxSmartConnectionError(
                                 self.user_locale,
-                                "ERROR_NETWORK_ISSUE",
-                                detail=f"Device not found at {self.ip} (HTTP 404)"
+                                "ERROR_DEVICE_NOT_FOUND",
+                                ip=self.ip,
+                                detail=f"Device HTTP endpoint not found (HTTP 404)"
                             )
                         elif response.status >= 500:
                             raise MaxSmartConnectionError(
                                 self.user_locale,
-                                "ERROR_NETWORK_ISSUE", 
-                                detail=f"Device server error (HTTP {response.status})"
+                                "ERROR_HTTP_ERROR", 
+                                ip=self.ip,
+                                status=response.status,
+                                detail=f"Device server error: {content[:100]}"
                             )
                         else:
                             raise CommandError(
-                                "ERROR_COMMAND_EXECUTION",
+                                "ERROR_HTTP_ERROR",
                                 self.user_locale,
-                                detail=f"HTTP {response.status}: {content[:100]}",
+                                ip=self.ip,
+                                status=response.status,
+                                detail=f"HTTP error: {content[:100]}"
                             )
 
                     # Read and parse response
@@ -108,9 +115,10 @@ class CommandMixin:
                         content = await response.text()
                         if not content.strip():
                             raise CommandError(
-                                "ERROR_COMMAND_EXECUTION",
+                                "ERROR_MISSING_EXPECTED_DATA",
                                 self.user_locale,
-                                detail="Device returned empty response",
+                                ip=self.ip,
+                                detail="Device returned empty response"
                             )
                         
                         json_response = json.loads(content)
@@ -120,7 +128,8 @@ class CommandMixin:
                             raise CommandError(
                                 "ERROR_INVALID_JSON",
                                 self.user_locale,
-                                detail="Response is not a JSON object",
+                                ip=self.ip,
+                                detail="Response is not a JSON object"
                             )
                             
                         # Check device response code if present
@@ -129,7 +138,8 @@ class CommandMixin:
                             raise CommandError(
                                 "ERROR_COMMAND_EXECUTION",
                                 self.user_locale,
-                                detail=f"Device returned error code {device_code}",
+                                ip=self.ip,
+                                detail=f"Device returned error code {device_code}"
                             )
                         
                         return json_response
@@ -138,42 +148,61 @@ class CommandMixin:
                         raise CommandError(
                             "ERROR_INVALID_JSON",
                             self.user_locale,
-                            detail=f"Invalid JSON response: {e}",
+                            ip=self.ip,
+                            detail=f"Invalid JSON response: {e}"
                         )
                     except UnicodeDecodeError as e:
                         raise CommandError(
-                            "ERROR_COMMAND_EXECUTION",
+                            "ERROR_RESPONSE_DECODE",
                             self.user_locale,
-                            detail=f"Response encoding error: {e}",
+                            ip=self.ip,
+                            detail=f"Response encoding error: {e}"
                         )
                         
             except asyncio.TimeoutError as e:
+                timeout_detail = f"HTTP timeout after {timeout}s (attempt {attempt + 1}/{retries + 1}) for URL: {url}"
                 last_exception = MaxSmartConnectionError(
                     self.user_locale,
-                    "ERROR_NETWORK_ISSUE",
-                    detail=f"Request timeout after {timeout}s (attempt {attempt + 1}/{retries + 1})"
+                    "ERROR_TIMEOUT_DETAIL",
+                    ip=self.ip,
+                    detail=timeout_detail
                 )
                 
             except aiohttp.ClientConnectionError as e:
+                connection_detail = f"Connection failed: {type(e).__name__} - {str(e)} (attempt {attempt + 1}/{retries + 1})"
                 last_exception = MaxSmartConnectionError(
                     self.user_locale,
-                    "ERROR_NETWORK_ISSUE", 
-                    detail=f"Connection failed: {type(e).__name__} (attempt {attempt + 1}/{retries + 1})"
+                    "ERROR_CONNECTION_REFUSED", 
+                    ip=self.ip,
+                    detail=connection_detail
                 )
                 
             except aiohttp.ClientError as e:
+                client_detail = f"HTTP client error: {type(e).__name__} - {str(e)} (attempt {attempt + 1}/{retries + 1})"
                 last_exception = MaxSmartConnectionError(
                     self.user_locale,
-                    "ERROR_NETWORK_ISSUE",
-                    detail=f"HTTP client error: {type(e).__name__} (attempt {attempt + 1}/{retries + 1})"
+                    "ERROR_CLIENT_ERROR",
+                    ip=self.ip,
+                    detail=client_detail
                 )
                 
             except OSError as e:
                 # Network-level errors (DNS, routing, etc.)
+                if "Network is unreachable" in str(e):
+                    error_type = "ERROR_NETWORK_ISSUE"
+                    detail = f"Network unreachable: {str(e)} (attempt {attempt + 1}/{retries + 1})"
+                elif "Name or service not known" in str(e):
+                    error_type = "ERROR_DNS_RESOLUTION"
+                    detail = f"DNS resolution failed: {str(e)} (attempt {attempt + 1}/{retries + 1})"
+                else:
+                    error_type = "ERROR_SOCKET_ERROR"
+                    detail = f"Socket error: {str(e)} (attempt {attempt + 1}/{retries + 1})"
+                
                 last_exception = MaxSmartConnectionError(
                     self.user_locale,
-                    "ERROR_NETWORK_ISSUE",
-                    detail=f"Network error: {e} (attempt {attempt + 1}/{retries + 1})"
+                    error_type,
+                    ip=self.ip,
+                    detail=detail
                 )
                 
             except (CommandError, MaxSmartConnectionError):
@@ -185,6 +214,7 @@ class CommandMixin:
                 raise CommandError(
                     "ERROR_UNEXPECTED",
                     self.user_locale,
+                    ip=self.ip,
                     detail=f"Unexpected error: {type(e).__name__}: {e}"
                 )
             
@@ -201,5 +231,6 @@ class CommandMixin:
             raise MaxSmartConnectionError(
                 self.user_locale,
                 "ERROR_NETWORK_ISSUE",
-                detail=f"All {retries + 1} attempts failed"
+                ip=self.ip,
+                detail=f"All {retries + 1} attempts failed without specific error"
             )

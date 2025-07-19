@@ -58,8 +58,9 @@ class MaxSmartDiscovery:
                 socket.inet_aton(ip)
             except socket.error:
                 raise DiscoveryError(
-                    "ERROR_INVALID_PARAMETERS",
+                    "ERROR_INVALID_IP_FORMAT",
                     user_locale,
+                    ip=ip,
                     detail=f"Invalid IP address format: {ip}"
                 )
         
@@ -100,7 +101,7 @@ class MaxSmartDiscovery:
             except Exception as e:
                 # Unexpected errors
                 raise DiscoveryError(
-                    "ERROR_UNEXPECTED",
+                    "ERROR_DISCOVERY_FAILED",
                     user_locale,
                     detail=f"Unexpected discovery error: {type(e).__name__}: {e}"
                 )
@@ -162,6 +163,7 @@ class MaxSmartDiscovery:
                 raise ConnectionError(
                     user_locale=user_locale,
                     error_key="ERROR_NETWORK_ISSUE",
+                    ip=target_ip,
                     detail=f"Failed to bind socket: {e}"
                 )
             
@@ -175,18 +177,21 @@ class MaxSmartDiscovery:
                     raise ConnectionError(
                         user_locale=user_locale,
                         error_key="ERROR_NETWORK_ISSUE",
+                        ip=target_ip,
                         detail="Network unreachable - check network connectivity"
                     )
                 elif "No route to host" in str(e):
                     raise ConnectionError(
                         user_locale=user_locale,
                         error_key="ERROR_NETWORK_ISSUE", 
+                        ip=target_ip,
                         detail=f"No route to host {target_ip}"
                     )
                 else:
                     raise ConnectionError(
                         user_locale=user_locale,
                         error_key="ERROR_NETWORK_ISSUE",
+                        ip=target_ip,
                         detail=f"Failed to send discovery message: {e}"
                     )
             
@@ -243,7 +248,7 @@ class MaxSmartDiscovery:
         except Exception as e:
             # Handle any other unexpected errors
             raise DiscoveryError(
-                "ERROR_UNEXPECTED",
+                "ERROR_DISCOVERY_FAILED",
                 user_locale,
                 detail=f"Discovery attempt failed: {type(e).__name__}: {e}"
             )
