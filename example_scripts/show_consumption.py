@@ -66,8 +66,9 @@ async def retrieve_consumption_data(device):
         watt_values = all_data.get('watt', [])
         switch_states = all_data.get('switch', [])
         
-        # Build consumption data with state info
-        for port in range(1, min(7, len(watt_values) + 1)):
+        # Build consumption data with state info - detect actual port count
+        actual_port_count = len(watt_values) if watt_values else 0
+        for port in range(1, actual_port_count + 1):
             port_name = port_mapping.get(f"Port {port}", f"Port {port}")
             watt_value = watt_values[port - 1] if port - 1 < len(watt_values) else 0.0
             state = switch_states[port - 1] if port - 1 < len(switch_states) else 0
@@ -127,9 +128,11 @@ async def show_device_info(device):
         
         total_watts = sum(watt_values) if watt_values else 0
         active_ports = sum(switch_states) if switch_states else 0
+        actual_port_count = len(switch_states) if switch_states else 0
         
         print(f"Total Consumption: {total_watts:.2f}W")
-        print(f"Active Ports: {active_ports}/6")
+        print(f"Active Ports: {active_ports}/{actual_port_count}")
+        print(f"Device Type: {'Smart Plug' if actual_port_count == 1 else f'{actual_port_count}-Port Power Station'}")
     except Exception as e:
         print(f"Error getting device summary: {e}")
     
@@ -150,11 +153,13 @@ async def device_loop(device):
                 
                 # Calculate totals
                 total_consumption = sum(row[1] for row in consumption_data)
+                actual_port_count = len(consumption_data)
                 active_count = sum(1 for row in consumption_data if row[2] == "ON")
                 
                 print(f"\nSummary:")
                 print(f"  Total Consumption: {total_consumption:.2f}W")
-                print(f"  Active Ports: {active_count}/6")
+                print(f"  Active Ports: {active_count}/{actual_port_count}")
+                print(f"  Device Type: {'Smart Plug' if actual_port_count == 1 else f'{actual_port_count}-Port Power Station'}")
                 print(f"  Average per Active Port: {total_consumption/active_count:.2f}W" if active_count > 0 else "  No active ports")
             else:
                 print("Unable to retrieve consumption data.")

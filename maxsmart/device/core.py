@@ -121,14 +121,13 @@ class MaxSmartDevice(
 
     async def initialize_device(self, start_polling=None):
         """
-        Perform device discovery and initialize properties with robust error handling.
+        Initialize device for HTTP operations only - no discovery.
         
         Args:
             start_polling (bool): Override auto_polling setting for this initialization
             
         Raises:
-            DiscoveryError: If device discovery fails
-            MaxSmartConnectionError: If network connectivity issues occur
+            ConnectionError: If HTTP connectivity fails
         """
         if self._is_initialized:
             logging.debug(f"Device {self.ip} already initialized")
@@ -139,104 +138,62 @@ class MaxSmartDevice(
             return
             
         try:
-            discovery = MaxSmartDiscovery()
-            devices = await discovery.discover_maxsmart(
-                ip=self.ip, user_locale=self.user_locale, timeout=3.0
-            )
-
-            if not devices:
-                raise DiscoveryError(
-                    "ERROR_NO_DEVICES_FOUND", 
-                    self.user_locale,
-                    detail=f"No device found at IP {self.ip}"
-                )
+            logging.debug(f"Initializing device {self.ip} via HTTP")
+            
+            # Test HTTP connectivity and get data for format detection
+            response = await self._send_command(CMD_GET_DEVICE_DATA)
+            data = response.get("data", {})
+            
+            if not data:
+                raise ValueError("No data received from device")
                 
-            # Use first (and should be only) device for unicast discovery
-            primary_device = devices[0]
-            self.sn = primary_device.get("sn", "")
-            self.name = primary_device.get("name", "")
-            self.version = primary_device.get("ver", "")
-
-            # Set the strip name to the device name (for port 0)
-            self.strip_name = self.name if self.name else DEFAULT_STRIP_NAME
-
-            # Logic to set port_names based on the number of ports as inferred from the sn
-            if "pname" in primary_device and primary_device["pname"]:
-                self.port_names = primary_device["pname"]  # Use pname if available
-            else:
-                # Check 4th character to determine number of ports
-                if self.sn and len(self.sn) >= 4:  # Make sure sn is long enough
-                    num_ports_char = self.sn[3]  # 4th character, index 3
-                    if num_ports_char == '6':
-                        self.port_names = DEFAULT_PORT_NAMES  # Use default names for 6 ports
-                    elif num_ports_char == '1':
-                        self.port_names = [self.name or "Port 1"]  # Use list with name for single port
-                    else:
-                        self.port_names = DEFAULT_PORT_NAMES  # Default if other model
+            # Auto-detect watt format based on data sample
+            watt_values = data.get("watt", [])
+            
+            if watt_values:
+                sample_value = watt_values[0]
+                logging.debug(f"Auto-detection sample: {sample_value} (type: {type(sample_value)})")
+                
+                # Check if it's a string (float format like "5.20")
+                if isinstance(sample_value, str):
+                    self._watt_multiplier = 1.0  # String floats are in watts
+                    self._watt_format = "string_float"
+                    logging.info(f"Auto-detected format: string float (watts) - sample: {sample_value}")
                 else:
-                    self.port_names = DEFAULT_PORT_NAMES  # Default if sn too short or empty
-
+                    # It's an integer/number, check magnitude to distinguish watts vs milliwatts
+                    float_value = float(sample_value)
+                    if float_value > 100:  # Likely milliwatts (anything >100 is probably mW)
+                        self._watt_multiplier = 0.001  # Convert milliwatts to watts
+                        self._watt_format = "int_milliwatt"
+                        logging.info(f"Auto-detected format: integer milliwatts - sample: {sample_value}")
+                    else:
+                        self._watt_multiplier = 1.0  # Integer watts (rare but possible)
+                        self._watt_format = "int_watt"
+                        logging.info(f"Auto-detected format: integer watts - sample: {sample_value}")
+            else:
+                # No watt data - use default
+                self._watt_multiplier = 1.0
+                self._watt_format = "default_watt"
+                logging.warning(f"No watt data for format detection, using default")
+                
             self._is_initialized = True
             
-            # Auto-detect watt format based on first data sample
-            try:
-                # Get a sample to detect format
-                test_response = await self._send_command(CMD_GET_DEVICE_DATA)
-                test_data = test_response.get("data", {})
-                test_watt = test_data.get("watt", [])
-                
-                if test_watt:
-                    sample_value = test_watt[0]
-                    logging.debug(f"Auto-detection sample: {sample_value} (type: {type(sample_value)})")
-                    
-                    # Check if it's a string (float format like "5.20")
-                    if isinstance(sample_value, str):
-                        self._watt_multiplier = 1.0  # String floats are in watts
-                        self._watt_format = "string_float"
-                        logging.info(f"Auto-detected format: string float (watts) - sample: {sample_value}")
-                    else:
-                        # It's an integer/number, check magnitude to distinguish watts vs milliwatts
-                        float_value = float(sample_value)
-                        if float_value > 100:  # Likely milliwatts (anything >100 is probably mW)
-                            self._watt_multiplier = 0.001  # Convert milliwatts to watts
-                            self._watt_format = "int_milliwatt"
-                            logging.info(f"Auto-detected format: integer milliwatts - sample: {sample_value}")
-                        else:
-                            self._watt_multiplier = 1.0  # Integer watts (rare but possible)
-                            self._watt_format = "int_watt"
-                            logging.info(f"Auto-detected format: integer watts - sample: {sample_value}")
-                else:
-                    raise ValueError("No watt data in sample")
-                    
-            except Exception as e:
-                # If detection fails, use firmware-based fallback
-                logging.warning(f"Auto-detection failed: {e}, using firmware-based detection")
-                if self.version in ["2.11", "3.49"]:
-                    self._watt_multiplier = 0.001
-                    self._watt_format = "fallback_milliwatt"
-                    logging.info(f"Fallback: firmware v{self.version} → milliwatt conversion")
-                else:
-                    self._watt_multiplier = 1.0
-                    self._watt_format = "fallback_watt"
-                    logging.info(f"Fallback: firmware v{self.version} → direct watts")
-            
-            logging.info(f"Device initialized: {self.name} ({self.ip}) - FW: {self.version} - Format: {self._watt_format}")
+            logging.info(f"Device initialized: {self.ip} - Format: {self._watt_format}")
             
             # Start polling if requested
             should_start_polling = start_polling if start_polling is not None else self._auto_polling
             if should_start_polling:
                 await self.start_adaptive_polling()
             
-        except (DiscoveryError, MaxSmartConnectionError):
-            # Re-raise discovery and connection errors as-is
-            raise
         except Exception as e:
-            # Wrap unexpected errors
-            raise DiscoveryError(
-                "ERROR_UNEXPECTED",
+            logging.error(f"Device initialization failed for {self.ip}: {e}")
+            raise MaxSmartConnectionError(
                 self.user_locale,
-                detail=f"Device initialization failed: {type(e).__name__}: {e}"
+                "ERROR_NETWORK_ISSUE",
+                detail=f"HTTP connection failed: {e}"
             )
+
+
 
     def _convert_watt(self, raw_watt):
         """
