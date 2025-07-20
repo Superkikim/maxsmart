@@ -60,7 +60,7 @@ class AdaptivePollingMixin:
         
         # Start the polling loop
         self._polling_task = asyncio.create_task(self._polling_loop(enable_burst))
-        logging.info(f"Started adaptive polling for device {self.ip}")
+        logging.debug(f"Started adaptive polling for device {self.ip}")
         
     async def stop_adaptive_polling(self):
         """Stop adaptive polling gracefully."""

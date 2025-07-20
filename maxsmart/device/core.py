@@ -120,7 +120,7 @@ class MaxSmartDevice(
             self._session = aiohttp.ClientSession(
                 connector=connector,
                 timeout=timeout,
-                headers={'User-Agent': 'MaxSmart-Python/2.0.0-beta2'}
+                headers={'User-Agent': 'MaxSmart-Python/2.0.3'}
             )
             
             logging.debug(f"Created new HTTP session for device {self.ip}")
@@ -171,27 +171,27 @@ class MaxSmartDevice(
                 if isinstance(sample_value, str):
                     self._watt_multiplier = 1.0  # String floats are in watts
                     self._watt_format = "string_float"
-                    logging.info(f"Auto-detected format: string float (watts) - sample: {sample_value}")
+                    logging.debug(f"Auto-detected format: string float (watts) - sample: {sample_value}")
                 else:
                     # It's an integer/number, check magnitude to distinguish watts vs milliwatts
                     float_value = float(sample_value)
                     if float_value > 100:  # Likely milliwatts (anything >100 is probably mW)
                         self._watt_multiplier = 0.001  # Convert milliwatts to watts
                         self._watt_format = "int_milliwatt"
-                        logging.info(f"Auto-detected format: integer milliwatts - sample: {sample_value}")
+                        logging.debug(f"Auto-detected format: integer milliwatts - sample: {sample_value}")
                     else:
                         self._watt_multiplier = 1.0  # Integer watts (rare but possible)
                         self._watt_format = "int_watt"
-                        logging.info(f"Auto-detected format: integer watts - sample: {sample_value}")
+                        logging.debug(f"Auto-detected format: integer watts - sample: {sample_value}")
             else:
                 # No watt data - use default
                 self._watt_multiplier = 1.0
                 self._watt_format = "default_watt"
-                logging.warning(f"No watt data for format detection, using default")
+                logging.debug(f"No watt data for format detection, using default")
                 
             self._is_initialized = True
             
-            logging.info(f"Device initialized: {self.ip} - Format: {self._watt_format}")
+            logging.debug(f"Device initialized: {self.ip} - Format: {self._watt_format}")
             
             # Start polling if requested
             should_start_polling = start_polling if start_polling is not None else self._auto_polling
@@ -397,7 +397,7 @@ class MaxSmartDevice(
                 await self._session.close()
                 logging.debug(f"Closed HTTP session for device {self.ip}")
             except Exception as e:
-                logging.warning(f"Error closing session for device {self.ip}: {e}")
+                logging.debug(f"Error closing session for device {self.ip}: {e}")
             finally:
                 self._session = None
                 

@@ -7,3 +7,5 @@ from .discovery import MaxSmartDiscovery
 
 # Backward compatibility aliases
 from .discovery import MaxSmartDiscovery as Discovery
+
+__all__ = ['MaxSmartDevice', 'MaxSmartDiscovery', 'Discovery']

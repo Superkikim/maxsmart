@@ -11,6 +11,27 @@ def get_user_locale():
     user_locale = locale.getdefaultlocale()[0]  # E.g., 'en_US'
     return user_locale if user_locale is not None else 'en'  # Fallback to 'en'
 
+def get_mac_address_from_ip(ip_address):
+    """
+    Get MAC address for an IP address.
+    
+    Args:
+        ip_address (str): IP address to look up
+        
+    Returns:
+        str or None: MAC address or None if not found
+    """
+    try:
+        from getmac import get_mac_address
+        return get_mac_address(ip=ip_address)
+    except ImportError:
+        logging.debug("getmac library not available - install with: pip install getmac")
+        return None
+    except Exception as e:
+        logging.debug(f"Failed to get MAC for {ip_address}: {e}")
+        return None
+
+
 def get_user_message(message_dict, error_key, user_locale, default_message="Unknown error.", **kwargs):
     """
     Retrieve a localized message from the provided dictionary.

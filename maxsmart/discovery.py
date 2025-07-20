@@ -124,7 +124,7 @@ class MaxSmartDiscovery:
         
         # Log discovery results
         if unique_devices:
-            logging.info(f"Discovery successful: found {len(unique_devices)} device(s)")
+            logging.info(f"Found {len(unique_devices)} MaxSmart device(s)")
             return unique_devices
         else:
             # No devices found after all attempts
@@ -235,10 +235,10 @@ class MaxSmartDiscovery:
                                 break
                                 
                     except json.JSONDecodeError as e:
-                        logging.warning(f"Received invalid JSON from {addr[0]}: {e}")
+                        logging.debug(f"Received invalid JSON from {addr[0]}: {e}")
                         continue
                     except UnicodeDecodeError as e:
-                        logging.warning(f"Received invalid UTF-8 from {addr[0]}: {e}")
+                        logging.debug(f"Received invalid UTF-8 from {addr[0]}: {e}")
                         continue
                         
                 except socket.timeout:
@@ -250,7 +250,7 @@ class MaxSmartDiscovery:
                         # Normal case when no more data available
                         break
                     else:
-                        logging.warning(f"Socket error during receive: {e}")
+                        logging.debug(f"Socket error during receive: {e}")
                         break
                         
         except Exception as e:
@@ -325,14 +325,14 @@ class MaxSmartDiscovery:
                     
                 except Exception as e:
                     # Hardware ID fetch failed, use device as-is
-                    logging.warning(f"Failed to get hardware IDs for {ip}: {e}")
+                    logging.debug(f"Failed to get hardware IDs for {ip}: {e}")
                     enhanced_device["hw_ids"] = {}
                     enhanced_device["unique_id"] = f"ip_{ip.replace('.', '_')}"
                     enhanced_device["sn_reliable"] = MaxSmartDiscovery._is_serial_reliable(device.get("sn", ""))
                     
             except Exception as e:
                 # Device initialization failed, use device as-is
-                logging.warning(f"Failed to initialize device {ip} for enhancement: {e}")
+                logging.debug(f"Failed to initialize device {ip} for enhancement: {e}")
                 enhanced_device["hw_ids"] = {}
                 enhanced_device["unique_id"] = f"ip_{ip.replace('.', '_')}"
                 enhanced_device["sn_reliable"] = MaxSmartDiscovery._is_serial_reliable(device.get("sn", ""))
