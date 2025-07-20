@@ -11,7 +11,8 @@ from .const import (
     DEFAULT_TARGET_IP,
     UDP_PORT,
     UDP_TIMEOUT,
-    DISCOVERY_MESSAGE
+    DISCOVERY_MESSAGE,
+    CMD_GET_DEVICE_IDS
 )
 
 from .exceptions import (
@@ -22,7 +23,7 @@ from .exceptions import (
 
 
 class MaxSmartDiscovery:
-    """MaxSmart device discovery with robust error handling."""
+    """MaxSmart device discovery with robust error handling and hardware ID enhancement."""
     
     # Discovery configuration
     DEFAULT_DISCOVERY_TIMEOUT = 2.0  # seconds - devices respond very quickly
@@ -30,15 +31,16 @@ class MaxSmartDiscovery:
     SOCKET_RETRY_DELAY = 0.5  # seconds
     
     @staticmethod
-    async def discover_maxsmart(ip=None, user_locale="en", timeout=None, max_attempts=None):
+    async def discover_maxsmart(ip=None, user_locale="en", timeout=None, max_attempts=None, enhance_with_hardware_ids=True):
         """
-        Discover MaxSmart devices with robust error handling and retry logic.
+        Discover MaxSmart devices with robust error handling and optional hardware ID enhancement.
         
         :param ip: Specific IP to query (None for broadcast)
         :param user_locale: User locale for error messages
         :param timeout: Discovery timeout in seconds
         :param max_attempts: Maximum discovery attempts
-        :return: List of discovered devices
+        :param enhance_with_hardware_ids: Fetch hardware IDs (CPU, MAC) via command 124
+        :return: List of discovered devices with enhanced identifiers
         
         :raises DiscoveryError: For discovery-related errors
         :raises ConnectionError: For network connectivity issues
@@ -113,6 +115,12 @@ class MaxSmartDiscovery:
             if device["ip"] not in seen_ips:
                 seen_ips.add(device["ip"])
                 unique_devices.append(device)
+        
+        # Enhance with hardware identifiers if requested
+        if enhance_with_hardware_ids and unique_devices:
+            unique_devices = await MaxSmartDiscovery._enhance_with_hardware_ids(
+                unique_devices, user_locale
+            )
         
         # Log discovery results
         if unique_devices:
@@ -261,3 +269,100 @@ class MaxSmartDiscovery:
                     pass  # Ignore close errors
         
         return devices
+
+    @staticmethod
+    async def _enhance_with_hardware_ids(devices, user_locale):
+        """
+        Enhance device list with hardware identifiers from command 124.
+        
+        :param devices: List of devices from UDP discovery
+        :param user_locale: User locale for error messages
+        :return: Enhanced device list with hardware IDs
+        """
+        enhanced_devices = []
+        
+        # Import here to avoid circular imports
+        from .device import MaxSmartDevice
+        
+        for device in devices:
+            enhanced_device = device.copy()
+            ip = device["ip"]
+            
+            try:
+                # Create temporary device instance to fetch hardware IDs
+                temp_device = MaxSmartDevice(ip)
+                await temp_device.initialize_device()
+                
+                # Get hardware identifiers
+                try:
+                    hw_ids = await temp_device.get_device_identifiers()
+                    
+                    # Add hardware identifiers to device info
+                    enhanced_device["hw_ids"] = hw_ids
+                    enhanced_device["cpuid"] = hw_ids.get("cpuid", "")
+                    enhanced_device["pclmac"] = hw_ids.get("pclmac", "")
+                    enhanced_device["pcldak"] = hw_ids.get("pcldak", "")
+                    enhanced_device["cloud_server"] = hw_ids.get("cloud_server", "")
+                    
+                    # Generate best unique identifier
+                    unique_id = await temp_device.get_unique_identifier()
+                    enhanced_device["unique_id"] = unique_id
+                    
+                    # Check if UDP serial is reliable
+                    udp_sn = device.get("sn", "")
+                    sn_reliable = MaxSmartDiscovery._is_serial_reliable(udp_sn)
+                    enhanced_device["sn_reliable"] = sn_reliable
+                    
+                    # If UDP serial is unreliable, prefer CPU ID as primary identifier
+                    if not sn_reliable and hw_ids.get("cpuid"):
+                        enhanced_device["primary_id"] = hw_ids["cpuid"]
+                        enhanced_device["primary_id_type"] = "cpuid"
+                    else:
+                        enhanced_device["primary_id"] = udp_sn
+                        enhanced_device["primary_id_type"] = "udp_serial"
+                    
+                    logging.debug(f"Enhanced device {ip}: {unique_id} (reliable_sn={sn_reliable})")
+                    
+                except Exception as e:
+                    # Hardware ID fetch failed, use device as-is
+                    logging.warning(f"Failed to get hardware IDs for {ip}: {e}")
+                    enhanced_device["hw_ids"] = {}
+                    enhanced_device["unique_id"] = f"ip_{ip.replace('.', '_')}"
+                    enhanced_device["sn_reliable"] = MaxSmartDiscovery._is_serial_reliable(device.get("sn", ""))
+                    
+            except Exception as e:
+                # Device initialization failed, use device as-is
+                logging.warning(f"Failed to initialize device {ip} for enhancement: {e}")
+                enhanced_device["hw_ids"] = {}
+                enhanced_device["unique_id"] = f"ip_{ip.replace('.', '_')}"
+                enhanced_device["sn_reliable"] = MaxSmartDiscovery._is_serial_reliable(device.get("sn", ""))
+                
+            finally:
+                # Always cleanup temp device
+                try:
+                    if 'temp_device' in locals():
+                        await temp_device.close()
+                except:
+                    pass
+                    
+            enhanced_devices.append(enhanced_device)
+            
+        return enhanced_devices
+
+    @staticmethod
+    def _is_serial_reliable(sn):
+        """
+        Check if a UDP serial number is reliable/usable.
+        
+        :param sn: Serial number from UDP discovery
+        :return: True if serial is reliable, False if corrupted/empty
+        """
+        return (
+            sn and 
+            isinstance(sn, str) and 
+            sn.strip() and 
+            len(sn) > 3 and  # Minimum reasonable length
+            all(ord(c) < 128 for c in sn) and  # ASCII only
+            sn.isprintable() and  # Printable characters
+            not any(c in sn for c in ['\x00', '\x01', '\x02', '\x03', '\x04', '\x05', '\x06'])  # No control chars
+        )

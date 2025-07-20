@@ -46,6 +46,9 @@ class DiscoveryError(MaxSmartError):
             log_key = "LOG_NO_DEVICES_FOUND"
         elif error_key == "ERROR_UDP_TIMEOUT":
             log_key = "LOG_UDP_TIMEOUT"
+        elif error_key == "ERROR_INVALID_IP_FORMAT":
+            log_key = "LOG_DISCOVERY_ERROR"
+            kwargs["error"] = message
         elif error_key == "ERROR_INVALID_PARAMETERS":
             log_key = "LOG_DISCOVERY_ERROR"
             kwargs["error"] = message
@@ -117,8 +120,14 @@ class CommandError(MaxSmartError):
         message = get_user_message(DEVICE_ERROR_MESSAGES, self.error_key, self.user_locale, **kwargs)
 
         # Log the localized message using the utility function
+        log_kwargs = {
+            "ip": kwargs.get("ip", "unknown"),
+            "command": f"Command: {error_key}",
+            "attempt": 1,
+            "max_attempts": 3
+        }
         log_message(DEVICE_STATE_ERROR_MESSAGES, "LOG_COMMAND_RETRY", self.user_locale, 
-                   level=logging.ERROR, command=f"Command: {error_key}", **kwargs)
+                   level=logging.ERROR, **log_kwargs)
 
         super().__init__(message, user_locale, **kwargs)
 
@@ -184,9 +193,14 @@ class DeviceOperationError(MaxSmartError):
         error_key = "ERROR_INVALID_PARAMETERS"
         message = get_user_message(DEVICE_ERROR_MESSAGES, error_key, self.user_locale, **kwargs)
 
-        # Log the localized message
-        log_message(DEVICE_STATE_ERROR_MESSAGES, "LOG_COMMAND_RETRY", self.user_locale, 
-                   level=logging.ERROR, command="Device operation", **kwargs)
+        # Log the localized message with proper parameters
+        log_kwargs = {
+            "ip": kwargs.get("ip", "unknown"),
+            "command": "Device operation",
+            "detail": kwargs.get("detail", "Invalid parameters")
+        }
+        log_message(DEVICE_STATE_ERROR_MESSAGES, "LOG_DEVICE_OPERATION", self.user_locale, 
+                   level=logging.ERROR, **log_kwargs)
 
         # Raise the error with the localized message
         super().__init__(message, user_locale, **kwargs)

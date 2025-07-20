@@ -10,6 +10,7 @@ from ..const import (
     CMD_SET_PORT_NAME,
     CMD_GET_STATISTICS,
     CMD_GET_DEVICE_TIME,
+    CMD_GET_DEVICE_IDS,
     RESPONSE_CODE_SUCCESS,
 )
 
@@ -26,7 +27,7 @@ class CommandMixin:
         """
         Send a command to the device with robust error handling and retry logic.
 
-        :param cmd: Command identifier (e.g., 511, 200, 201).
+        :param cmd: Command identifier (e.g., 511, 200, 201, 124).
         :param params: Additional parameters for the command (optional).
         :param timeout: Request timeout in seconds (default: 10s).
         :param retries: Number of retry attempts (default: 3).
@@ -48,6 +49,7 @@ class CommandMixin:
             CMD_SET_PORT_STATE,
             CMD_SET_PORT_NAME,
             CMD_GET_DEVICE_TIME,
+            CMD_GET_DEVICE_IDS,
         }
         if cmd not in valid_commands:
             raise CommandError(

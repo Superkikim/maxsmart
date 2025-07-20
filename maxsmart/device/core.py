@@ -7,15 +7,17 @@ from ..const import (
     DEFAULT_STRIP_NAME,
     DEFAULT_PORT_NAMES,
     CMD_GET_DEVICE_DATA,
+    CMD_GET_DEVICE_IDS,
 )
 from ..utils import get_user_locale
 from ..discovery import MaxSmartDiscovery
-from ..exceptions import ConnectionError as MaxSmartConnectionError, DiscoveryError
+from ..exceptions import ConnectionError as MaxSmartConnectionError, DiscoveryError, DeviceOperationError
 from .commands import CommandMixin
 from .control import ControlMixin
 from .statistics import StatisticsMixin
 from .configuration import ConfigurationMixin
 from .time import TimeMixin
+from .hardware import HardwareMixin
 from .polling import AdaptivePollingMixin
 
 
@@ -25,6 +27,7 @@ class MaxSmartDevice(
     StatisticsMixin, 
     ConfigurationMixin, 
     TimeMixin,
+    HardwareMixin,
     AdaptivePollingMixin
 ):
     """
@@ -36,6 +39,7 @@ class MaxSmartDevice(
     - StatisticsMixin: Statistics and power monitoring
     - ConfigurationMixin: Port names and device configuration
     - TimeMixin: Device time management
+    - HardwareMixin: Hardware identification (MAC, CPU ID, etc.)
     - AdaptivePollingMixin: Adaptive polling (5s normal, 2s burst after commands)
     """
 
@@ -57,7 +61,11 @@ class MaxSmartDevice(
         try:
             socket.inet_aton(ip_address)
         except socket.error:
-            raise ValueError(f"Invalid IP address format: {ip_address}")
+            raise DeviceOperationError(
+                user_locale=get_user_locale(),
+                ip=ip_address,
+                detail=f"Invalid IP address format: {ip_address}"
+            )
             
         self.ip = ip_address
         self.user_locale = get_user_locale()  # Get user's locale from utils
@@ -127,7 +135,7 @@ class MaxSmartDevice(
             start_polling (bool): Override auto_polling setting for this initialization
             
         Raises:
-            ConnectionError: If HTTP connectivity fails
+            MaxSmartConnectionError: If HTTP connectivity fails
         """
         if self._is_initialized:
             logging.debug(f"Device {self.ip} already initialized")
@@ -145,7 +153,12 @@ class MaxSmartDevice(
             data = response.get("data", {})
             
             if not data:
-                raise ValueError("No data received from device")
+                raise MaxSmartConnectionError(
+                    user_locale=self.user_locale,
+                    error_key="ERROR_MISSING_EXPECTED_DATA",
+                    ip=self.ip,
+                    detail="No data received from device during initialization"
+                )
                 
             # Auto-detect watt format based on data sample
             watt_values = data.get("watt", [])
@@ -185,15 +198,17 @@ class MaxSmartDevice(
             if should_start_polling:
                 await self.start_adaptive_polling()
             
+        except MaxSmartConnectionError:
+            # Re-raise connection errors as-is
+            raise
         except Exception as e:
             logging.error(f"Device initialization failed for {self.ip}: {e}")
             raise MaxSmartConnectionError(
-                self.user_locale,
-                "ERROR_NETWORK_ISSUE",
-                detail=f"HTTP connection failed: {e}"
+                user_locale=self.user_locale,
+                error_key="ERROR_NETWORK_ISSUE",
+                ip=self.ip,
+                detail=f"HTTP connection failed during initialization: {type(e).__name__}: {e}"
             )
-
-
 
     def _convert_watt(self, raw_watt):
         """

@@ -19,6 +19,7 @@ DISCOVERY_ERROR_MESSAGES = {
         "ERROR_UDP_TIMEOUT": "Discovery process timed out while waiting for device responses.",
         "ERROR_DISCOVERY_FAILED": "Device discovery failed: {detail}",
         "ERROR_NETWORK_UNREACHABLE": "Network unreachable during discovery: {detail}",
+        "ERROR_INVALID_IP_FORMAT": "Invalid IP address format: {ip} - {detail}",
     },
     "fr": {
         "ERROR_NO_DEVICES_FOUND": "Aucun appareil MaxSmart trouvé.",
@@ -27,6 +28,7 @@ DISCOVERY_ERROR_MESSAGES = {
         "ERROR_UDP_TIMEOUT": "Le processus de découverte a expiré en attendant des réponses des appareils.",
         "ERROR_DISCOVERY_FAILED": "La découverte d'appareil a échoué: {detail}",
         "ERROR_NETWORK_UNREACHABLE": "Réseau inatteignable pendant la découverte: {detail}",
+        "ERROR_INVALID_IP_FORMAT": "Format d'adresse IP invalide: {ip} - {detail}",
     },
     "de": {
         "ERROR_NO_DEVICES_FOUND": "Keine MaxSmart-Geräte gefunden.",
@@ -35,6 +37,7 @@ DISCOVERY_ERROR_MESSAGES = {
         "ERROR_UDP_TIMEOUT": "Der Entdeckungsprozess wurde abgebrochen, während auf die Antworten der Geräte gewartet wurde.",
         "ERROR_DISCOVERY_FAILED": "Geräteerkennung fehlgeschlagen: {detail}",
         "ERROR_NETWORK_UNREACHABLE": "Netzwerk während der Erkennung nicht erreichbar: {detail}",
+        "ERROR_INVALID_IP_FORMAT": "Ungültiges IP-Adressformat: {ip} - {detail}",
     },
 }
 
@@ -54,6 +57,7 @@ DISCOVERY_LOGGING_MESSAGES = {
         "LOG_DEVICE_FOUND": "Found MaxSmart device: {name} ({ip}) - FW: {firmware}",
         "LOG_HTTP_TIMEOUT": "HTTP request timeout after {timeout}s for device {ip} (attempt {attempt}/{max_attempts})",
         "LOG_CONNECTION_ERROR": "Connection error for device {ip}: {error}",
+        "LOG_DISCOVERY_ERROR": "Discovery error for {ip}: {error}",
     },
     "fr": {
         "LOG_NO_DEVICES_FOUND": "Aucun appareil MaxSmart trouvé lors de la découverte.",
@@ -63,6 +67,7 @@ DISCOVERY_LOGGING_MESSAGES = {
         "LOG_DEVICE_FOUND": "Appareil MaxSmart trouvé: {name} ({ip}) - FW: {firmware}",
         "LOG_HTTP_TIMEOUT": "Timeout de requête HTTP après {timeout}s pour l'appareil {ip} (tentative {attempt}/{max_attempts})",
         "LOG_CONNECTION_ERROR": "Erreur de connexion pour l'appareil {ip}: {error}",
+        "LOG_DISCOVERY_ERROR": "Erreur de découverte pour {ip}: {error}",
     },
     "de": {
         "LOG_NO_DEVICES_FOUND": "Keine MaxSmart-Geräte während der Entdeckung gefunden.",
@@ -72,6 +77,7 @@ DISCOVERY_LOGGING_MESSAGES = {
         "LOG_DEVICE_FOUND": "MaxSmart-Gerät gefunden: {name} ({ip}) - FW: {firmware}",
         "LOG_HTTP_TIMEOUT": "HTTP-Anfrage-Timeout nach {timeout}s für Gerät {ip} (Versuch {attempt}/{max_attempts})",
         "LOG_CONNECTION_ERROR": "Verbindungsfehler für Gerät {ip}: {error}",
+        "LOG_DISCOVERY_ERROR": "Entdeckungsfehler für {ip}: {error}",
     },
 }
 
@@ -86,7 +92,7 @@ DEVICE_ERROR_MESSAGES = {
         "ERROR_UNEXPECTED_STATE": "Unexpected state for port {port} on device {ip}.",
         "ERROR_DEVICE_NOT_FOUND": "Device not found at IP {ip}.",
         "ERROR_DEVICE_TIMEOUT": "Device {ip} did not respond within {timeout}s.",
-        "ERROR_INVALID_PARAMETERS": "Invalid parameters provided for the operation: {detail}",
+        "ERROR_INVALID_PARAMETERS": "Invalid parameters provided for the operation on device {ip}: {detail}",
         "ERROR_INVALID_TYPE": "Invalid type. Must be 0 (hourly), 1 (daily), or 2 (monthly).",
         "ERROR_UNEXPECTED": "Unexpected error occurred: {detail}",
         "ERROR_INVALID_JSON": "Received invalid JSON data from device {ip}: {detail}",
@@ -101,7 +107,7 @@ DEVICE_ERROR_MESSAGES = {
         "ERROR_UNEXPECTED_STATE": "État inattendu pour le port {port} sur l'appareil {ip}.",
         "ERROR_DEVICE_NOT_FOUND": "Appareil non trouvé à l'IP {ip}.",
         "ERROR_DEVICE_TIMEOUT": "L'appareil {ip} n'a pas répondu dans les {timeout}s.",
-        "ERROR_INVALID_PARAMETERS": "Paramètres invalides fournis pour l'opération: {detail}",
+        "ERROR_INVALID_PARAMETERS": "Paramètres invalides fournis pour l'opération sur l'appareil {ip}: {detail}",
         "ERROR_INVALID_TYPE": "Type invalide. Doit être 0 (horaire), 1 (journalier) ou 2 (mensuel).",
         "ERROR_UNEXPECTED": "Une erreur inattendue s'est produite: {detail}",
         "ERROR_INVALID_JSON": "Données JSON invalides reçues de l'appareil {ip}: {detail}",
@@ -116,7 +122,7 @@ DEVICE_ERROR_MESSAGES = {
         "ERROR_UNEXPECTED_STATE": "Unerwarteter Zustand für Port {port} auf Gerät {ip}.",
         "ERROR_DEVICE_NOT_FOUND": "Gerät nicht gefunden unter IP {ip}.",
         "ERROR_DEVICE_TIMEOUT": "Gerät {ip} hat nicht innerhalb von {timeout}s geantwortet.",
-        "ERROR_INVALID_PARAMETERS": "Ungültige Parameter für die Operation bereitgestellt: {detail}",
+        "ERROR_INVALID_PARAMETERS": "Ungültige Parameter für die Operation auf Gerät {ip} bereitgestellt: {detail}",
         "ERROR_INVALID_TYPE": "Ungültiger Typ. Muss 0 (stündlich), 1 (täglich) oder 2 (monatlich) sein.",
         "ERROR_UNEXPECTED": "Unerwartete Fehler: {detail}",
         "ERROR_INVALID_JSON": "Ungültige JSON-Daten von Gerät {ip} empfangen: {detail}",
@@ -190,6 +196,7 @@ DEVICE_STATE_ERROR_MESSAGES = {
         "LOG_COMMAND_SUCCESS": "Command executed successfully for device {ip}: {command}",
         "LOG_COMMAND_RETRY": "Retrying command for device {ip} (attempt {attempt}/{max_attempts}): {command}",
         "LOG_STATE_CHANGE": "State changed for port {port} on device {ip}: {old_state} -> {new_state}",
+        "LOG_DEVICE_OPERATION": "Device operation for {ip}: {command} - {detail}",
     },
     "fr": {
         "LOG_DEVICE_NOT_FOUND": "L'appareil '{device_name}' n'a pas été trouvé lors de la découverte à l'IP {ip}.",
@@ -197,6 +204,7 @@ DEVICE_STATE_ERROR_MESSAGES = {
         "LOG_COMMAND_SUCCESS": "Commande exécutée avec succès pour l'appareil {ip}: {command}",
         "LOG_COMMAND_RETRY": "Nouvelle tentative de commande pour l'appareil {ip} (tentative {attempt}/{max_attempts}): {command}",
         "LOG_STATE_CHANGE": "État changé pour le port {port} sur l'appareil {ip}: {old_state} -> {new_state}",
+        "LOG_DEVICE_OPERATION": "Opération d'appareil pour {ip}: {command} - {detail}",
     },
     "de": {
         "LOG_DEVICE_NOT_FOUND": "Gerät '{device_name}' wurde während der Entdeckung unter IP {ip} nicht gefunden.",
@@ -204,6 +212,7 @@ DEVICE_STATE_ERROR_MESSAGES = {
         "LOG_COMMAND_SUCCESS": "Befehl erfolgreich für Gerät {ip} ausgeführt: {command}",
         "LOG_COMMAND_RETRY": "Wiederholung des Befehls für Gerät {ip} (Versuch {attempt}/{max_attempts}): {command}",
         "LOG_STATE_CHANGE": "Zustand geändert für Port {port} auf Gerät {ip}: {old_state} -> {new_state}",
+        "LOG_DEVICE_OPERATION": "Geräteoperation für {ip}: {command} - {detail}",
     },
 }
 
@@ -273,6 +282,7 @@ CMD_GET_DEVICE_DATA = 511  # Command to get various data from the device (wattag
 CMD_GET_STATISTICS = 510  # Command to get statistics
 CMD_SET_PORT_NAME = 201  # Command to set or change the name of a specific port
 CMD_GET_DEVICE_TIME = 502  # Command to query device date and time
+CMD_GET_DEVICE_IDS = 124  # Command to get hardware identifiers (MAC, DAK, CPUid, cloud server)
 
 # -------------------------
 # Default Values
