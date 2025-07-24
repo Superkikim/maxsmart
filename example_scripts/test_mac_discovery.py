@@ -9,7 +9,6 @@ Tests getmac, nmap, and native ARP approaches.
 import asyncio
 import logging
 import sys
-from maxsmart.network import NetworkUtils
 
 # Setup logging
 logging.basicConfig(

@@ -10,7 +10,6 @@ import asyncio
 import logging
 import sys
 from maxsmart import MaxSmartDiscovery, MaxSmartDevice
-from maxsmart.utils import get_mac_address_from_ip
 
 # Setup logging
 logging.basicConfig(
@@ -34,7 +33,7 @@ def print_table_header():
         f"{'IP':<15} "
         f"{'FW':<5} "
         f"{'CPU ID':<26} "
-        f"{'MAC (ARP)':<17} "
+        f"{'MAC (ARP)':<18} "
         f"{'UDP Serial':<20} "
         f"{'Best ID':<32} "
         f"{'Status':<12}"
@@ -62,7 +61,8 @@ def print_device_row(device_info):
     mac_arp_data = identifiers.get('mac_arp', {})
     mac_arp = mac_arp_data.get('value', 'Not available') if mac_arp_data else 'Not available'
     if mac_arp and mac_arp != 'Not available':
-        mac_arp = str(mac_arp)[:16]
+        # Fix: Full MAC address is 17 characters, not 16!
+        mac_arp = str(mac_arp)[:17]
     else:
         mac_arp = 'Not available'
     
@@ -98,7 +98,7 @@ def print_device_row(device_info):
         f"{ip:<15} "
         f"{firmware:<5} "
         f"{cpuid:<26} "
-        f"{mac_arp:<17} "
+        f"{mac_arp:<18} "
         f"{udp_serial:<20} "
         f"{best_id_str:<32} "
         f"{status:<12}"
@@ -150,6 +150,58 @@ def print_detailed_view(device_info):
     
     print()
 
+def get_default_gateway():
+    """Get the default gateway IP address."""
+    try:
+        import subprocess
+        import platform
+        
+        system = platform.system().lower()
+        if system == "windows":
+            result = subprocess.run(['route', 'print', '0.0.0.0'], capture_output=True, text=True)
+            for line in result.stdout.split('\n'):
+                if '0.0.0.0' in line and 'Gateway' not in line:
+                    parts = line.split()
+                    if len(parts) >= 3:
+                        return parts[2]  # Gateway IP
+        elif system in ["linux", "darwin"]:
+            result = subprocess.run(['ip', 'route', 'show', 'default'], capture_output=True, text=True)
+            for line in result.stdout.split('\n'):
+                if 'default via' in line:
+                    parts = line.split()
+                    if len(parts) >= 3:
+                        return parts[2]  # Gateway IP
+        return None
+    except:
+        return None
+
+def test_getmac_functionality():
+    """Test getmac library functionality."""
+    print("🔧 Testing getmac functionality...")
+    try:
+        from getmac import get_mac_address
+        
+        # Try to get default gateway
+        gateway_ip = get_default_gateway()
+        if gateway_ip:
+            print(f"   Default gateway: {gateway_ip}")
+            test_mac = get_mac_address(ip=gateway_ip)
+            if test_mac:
+                print(f"   ✅ getmac available - Gateway MAC: {test_mac}")
+                return True
+            else:
+                print(f"   ⚠️ getmac available but no MAC found for gateway")
+                return True  # Still available, just no result
+        else:
+            print(f"   ⚠️ getmac available but couldn't find default gateway")
+            return True  # Still available
+    except ImportError:
+        print(f"   ❌ getmac library not installed")
+        return False
+    except Exception as e:
+        print(f"   ⚠️ getmac error: {e}")
+        return False
+
 async def test_all_devices():
     """Test identification for all discovered devices."""
     
@@ -158,17 +210,8 @@ async def test_all_devices():
     print()
     
     try:
-        # Test ARP functionality first
-        print("🔧 Testing ARP functionality...")
-        try:
-            test_mac = get_mac_address_from_ip("172.30.47.1")
-            arp_available = test_mac is not None
-            print(f"   ARP Available: {'✅' if arp_available else '❌'}")
-            if test_mac:
-                print(f"   Gateway MAC: {test_mac}")
-        except Exception as e:
-            print(f"   ARP Error: {e}")
-            arp_available = False
+        # Test getmac functionality
+        getmac_available = test_getmac_functionality()
         print()
         
         # Discover devices (without hardware enhancement to get raw UDP data)
@@ -286,17 +329,8 @@ async def test_specific_device(ip_address):
     
     device = None
     try:
-        # Test ARP functionality
-        print("🔧 Testing ARP functionality...")
-        try:
-            test_mac = get_mac_address_from_ip("172.30.47.1")
-            arp_available = test_mac is not None
-            print(f"   ARP Available: {'✅' if arp_available else '❌'}")
-            if test_mac:
-                print(f"   Gateway MAC: {test_mac}")
-        except Exception as e:
-            print(f"   ARP Error: {e}")
-            arp_available = False
+        # Test getmac functionality
+        getmac_available = test_getmac_functionality()
         print()
         
         # Get UDP discovery info
@@ -346,39 +380,17 @@ async def test_specific_device(ip_address):
         if device:
             await device.close()
 
-async def test_arp_only():
-    """Test ARP functionality only."""
-    
-    print("🔧 Testing ARP Functionality")
-    print_separator()
-    
-    arp_test = await NetworkUtils.test_arp_functionality()
-    
-    print(f"System: {arp_test['system']}")
-    print(f"ARP Available: {'✅' if arp_test['arp_available'] else '❌'}")
-    print(f"Ping Available: {'✅' if arp_test['ping_available'] else '❌'}")
-    print()
-    
-    print("Test Results:")
-    for test_ip in arp_test['test_ips']:
-        ip = test_ip['ip']
-        mac = test_ip.get('mac', 'Not found')
-        success = "✅" if test_ip.get('success', False) else "❌"
-        error = test_ip.get('error', '')
-        
-        print(f"   {ip:<15} {success} {mac}")
-        if error:
-            print(f"                   Error: {error}")
-
 def main():
     """Main function with command line argument handling."""
     
     if len(sys.argv) > 1:
         arg = sys.argv[1]
         
-        if arg == "--arp-test":
-            # Test ARP functionality only
-            asyncio.run(test_arp_only())
+        if arg == "--getmac-test":
+            # Test getmac functionality only
+            print("🔧 Testing getmac Library")
+            print_separator()
+            test_getmac_functionality()
         else:
             # Test specific IP
             asyncio.run(test_specific_device(arg))

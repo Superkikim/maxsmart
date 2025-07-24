@@ -1,2 +1,4 @@
 matplotlib
+getmac
+aiohttp>=3.8.
 
