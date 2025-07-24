@@ -1,10 +1,10 @@
 # MaxSmart Python Module
 
-[![PyPI version](https://img.shields.io/badge/PyPI-2.0.2-blue.svg)](https://pypi.org/project/maxsmart/)
+[![PyPI version](https://img.shields.io/badge/PyPI-2.0.3-blue.svg)](https://pypi.org/project/maxsmart/)
 [![Python versions](https://img.shields.io/badge/Python-3.7%2B-blue.svg)](https://pypi.org/project/maxsmart/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Version:** 2.0.2
+**Version:** 2.0.3
 
 A comprehensive Python library for controlling Revogi-based Max Hauri MaxSmart PowerStrips and Smart Plugs over local network. Features intelligent auto-detection, adaptive polling, real-time monitoring, and robust async architecture.
 
@@ -12,6 +12,7 @@ A comprehensive Python library for controlling Revogi-based Max Hauri MaxSmart P
 
 - **Full async/await architecture** - Modern Python async throughout
 - **Intelligent firmware detection** - Auto-detects and adapts to different firmware versions
+- **Advanced device identification** - CPU ID, MAC address, and serial-based device tracking
 - **Adaptive polling system** - Mimics official app behavior (5s normal, 2s burst)
 - **Real-time monitoring** - Live consumption and state change detection
 - **Enhanced error handling** - Robust retry logic with localized messages
@@ -21,22 +22,31 @@ A comprehensive Python library for controlling Revogi-based Max Hauri MaxSmart P
 
 ## 🔧 Supported Hardware
 
-### Firmware Compatibility
-- **v1.30**: Full feature support including port name management
-- **v2.11+**: Basic control and monitoring (port renaming not supported)
-- **Auto-detection**: Module automatically adapts to your firmware version
+### Firmware Compatibility & Testing Status
+
+| Brand | Device Type | Firmware Versions | Support Level | Test Status |
+|-------|-------------|-------------------|---------------|-------------|
+| **Max Hauri** | Power Station (6 ports) | **v1.10, v1.30, v2.11** | [![Full](https://img.shields.io/badge/Support-Full-brightgreen.svg)]() | [![Tested](https://img.shields.io/badge/Tests-Validated-brightgreen.svg)]() |
+| **Max Hauri** | Smart Plug (1 port) | **v1.10, v1.30, v2.11** | [![Full](https://img.shields.io/badge/Support-Full-brightgreen.svg)]() | [![Tested](https://img.shields.io/badge/Tests-Validated-brightgreen.svg)]() |
+| **Revogi** | Power Strip (6 ports) | **v3.36, v3.49** | [![Full](https://img.shields.io/badge/Support-Full-brightgreen.svg)]() | [![Tested](https://img.shields.io/badge/Tests-Validated-brightgreen.svg)]() |
+| **CoCoSo** | Power Strip (6 ports) | **v1.06** | [![Full](https://img.shields.io/badge/Support-Full-brightgreen.svg)]() | [![Tested](https://img.shields.io/badge/Tests-Validated-brightgreen.svg)]() |
+| **Extel** | Soky Power Strip | Various | [![Compatible](https://img.shields.io/badge/Support-Compatible-yellow.svg)]() | [![Need Testing](https://img.shields.io/badge/Tests-Need%20Volunteers-orange.svg)]() |
+| **MCL** | DOM-PPS06I | Various | [![Compatible](https://img.shields.io/badge/Support-Compatible-yellow.svg)]() | [![Need Testing](https://img.shields.io/badge/Tests-Need%20Volunteers-orange.svg)]() |
 
 ### Device Models
 - Max Hauri MaxSmart Power Station (6 ports)
 - Max Hauri MaxSmart Smart Plug (1 port)  
-- Revogi Smart Power Strip
+- Revogi Smart Power Strip (SOW323)
+- CoCoSo Smart Power Strip (SOW323)
 - Extel Soky Power Strip
 - MCL DOM-PPS06I
+
+**🤝 Help expand compatibility!** If you have Revogi-based devices with different firmware versions, please [test them and let us know](https://github.com/superkikim/maxsmart/issues/new) - we'd love to add them to the supported list!
 
 ### Data Format Detection
 The module automatically detects your device's data format:
 - **String floats** ("5.20") → Direct watt values
-- **Integer milliwatts** (5200) → Converted to watts
+- **Integer milliwatts** (5200) → Converted to watts (×0.001)
 - **Integer watts** (5) → Direct watt values
 
 ## 📦 Installation
@@ -56,6 +66,7 @@ pip install .
 ### Dependencies
 - Python 3.7+
 - aiohttp (async HTTP client)
+- getmac (MAC address discovery)
 - matplotlib (for example scripts)
 
 ## 🚀 Quick Start
@@ -109,6 +120,19 @@ for device in devices:
     print(f"Ports: {device['pname']}")
 ```
 
+### Enhanced Discovery with Hardware Identification
+```python
+# Enhanced discovery with CPU ID, MAC address detection
+devices = await MaxSmartDiscovery.discover_maxsmart(enhance_with_hardware_ids=True)
+
+for device in devices:
+    print(f"Name: {device['name']} ({device['ip']})")
+    print(f"CPU ID: {device.get('cpuid', 'Not available')}")
+    print(f"MAC Address: {device.get('mac_address', 'Not available')}")
+    print(f"Unique ID: {device.get('unique_id', 'Not available')}")
+    print(f"ID Method: {device.get('identification_method', 'fallback')}")
+```
+
 ### Targeted Discovery
 ```python
 # Query specific IP address
@@ -121,6 +145,41 @@ devices = await MaxSmartDiscovery.discover_maxsmart(
     timeout=5.0
 )
 ```
+
+## 🆔 Advanced Device Identification
+
+### Hardware Identifiers
+```python
+device = MaxSmartDevice('192.168.1.100')
+await device.initialize_device()
+
+# Get hardware identifiers
+hw_ids = await device.get_device_identifiers()
+print(f"CPU ID: {hw_ids.get('cpuid', 'Not available')}")
+print(f"Device MAC: {hw_ids.get('pclmac', 'Not available')}")
+print(f"Device Access Key: {hw_ids.get('pcldak', 'Not available')}")
+
+# Get MAC address via ARP
+mac_address = await device.get_mac_address_via_arp()
+print(f"ARP MAC: {mac_address}")
+
+# Get best unique identifier
+unique_id = await device.get_unique_identifier()
+print(f"Best unique ID: {unique_id}")
+
+# Get all available identifiers
+all_ids = await device.get_all_identifiers()
+for id_type, data in all_ids.items():
+    if data.get('available'):
+        print(f"{id_type}: {data['value']} (from {data['source']})")
+```
+
+### Identification Priority
+The module uses this priority for device identification:
+1. **CPU ID** (most reliable) - Hardware-based unique identifier
+2. **MAC Address** (very reliable) - Network hardware identifier  
+3. **UDP Serial** (good) - Device serial from discovery
+4. **IP Address** (fallback) - Network address
 
 ## 🎛️ Device Control
 
@@ -363,6 +422,7 @@ The `example_scripts/` directory contains comprehensive examples:
 
 ### Basic Examples
 - `test_discovery_async.py` - Device discovery with validation
+- `test_device_identification.py` - Advanced device identification testing
 - `get_port_names_async.py` - Port name retrieval and display
 - `retrieve_states_async.py` - Port state checking
 - `show_consumption.py` - Real-time power monitoring
@@ -381,6 +441,9 @@ pip install -r example_scripts/requirements.txt
 # Run comprehensive test suite
 python example_scripts/maxsmart_tests_async.py
 
+# Test device identification
+python example_scripts/test_device_identification.py
+
 # Test adaptive polling
 python example_scripts/test_adaptive_polling.py
 
@@ -397,7 +460,8 @@ devices = await MaxSmartDiscovery.discover_maxsmart(
     ip=None,                    # None for broadcast, IP for unicast
     user_locale="en",           # Locale for error messages
     timeout=3.0,                # Discovery timeout in seconds
-    max_attempts=3              # Maximum discovery attempts
+    max_attempts=3,             # Maximum discovery attempts
+    enhance_with_hardware_ids=True  # Enable hardware identification
 )
 ```
 
@@ -465,6 +529,19 @@ except:
     print("Device unreachable")
 ```
 
+**Power scaling issues**
+```python
+# Check device firmware and data format
+await device.initialize_device()
+print(f"Firmware: {device.version}")
+print(f"Data format: {device._watt_format}")
+print(f"Conversion factor: {device._watt_multiplier}")
+
+# Test with raw data
+raw_data = await device.get_data()
+print(f"Raw power values: {raw_data['watt']}")
+```
+
 **Firmware compatibility errors**
 ```python
 # Check device firmware version
@@ -473,8 +550,8 @@ print(f"Firmware: {device.version}")
 print(f"Data format: {device._watt_format}")
 
 # Firmware capabilities:
-# v1.30: Full support including port renaming
-# v2.11+: Basic control only (no port renaming)
+# v1.06, v1.10, v1.30: Full support including port renaming
+# v2.11, v3.36, v3.49: Full control, basic port renaming
 ```
 
 **Connection timeouts**
