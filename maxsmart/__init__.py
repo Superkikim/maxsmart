@@ -1,6 +1,6 @@
 # maxsmart/__init__.py
 
-__version__ = "2.0.3"
+__version__ = "2.0.4"
 
 from .device import MaxSmartDevice
 from .discovery import MaxSmartDiscovery
