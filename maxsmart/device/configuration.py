@@ -14,6 +14,8 @@ from ..const import (
     MAX_PORT_NAME_LENGTH,
     IN_DEVICE_NAME_VERSION,
     RESPONSE_CODE_SUCCESS,
+    UDP_PORT,
+    DISCOVERY_MESSAGE,
 )
 
 
@@ -21,28 +23,23 @@ class ConfigurationMixin:
     """Mixin class providing device configuration functionality (port names, etc.)."""
 
     async def retrieve_port_names(self):
-        """Retrieve current port names by sending a discovery request."""
+        """Retrieve current port names by sending a direct UDP request to the device."""
         if not self.ip:
             raise StateError(
                 "ERROR_MISSING_EXPECTED_DATA", self.user_locale
-            )  # Change to the error key for missing IP
-
-        from ..discovery import MaxSmartDiscovery
+            )
 
         try:
-            discovery = MaxSmartDiscovery()
-            devices = await discovery.discover_maxsmart(ip=self.ip)
-
-            if not devices:
+            # Direct UDP unicast to get port names without using discovery
+            device_data = await self._get_port_names_via_udp()
+            
+            if not device_data:
                 raise DiscoveryError(
                     "ERROR_NO_DEVICES_FOUND", self.user_locale
-                )  # Use the error key for no devices found
+                )
 
-            device = devices[0]  # Access the first (and only) device
-            self.strip_name = device.get("name", self.strip_name)  # Name for port 0
-            self.port_names = device.get(
-                "pname", self.port_names
-            )  # Names for ports 1 to 6
+            self.strip_name = device_data.get("name", self.strip_name)  # Name for port 0
+            self.port_names = device_data.get("pname", self.port_names)  # Names for ports 1 to 6
 
             # Combine in a dictionary
             port_mapping = {
@@ -55,20 +52,63 @@ class ConfigurationMixin:
                     else f"Port {i}"
                 )
 
-            return port_mapping  # Return the dictionary
+            return port_mapping
 
         except ConnectionError:
             raise ConnectionError(
                 "ERROR_NETWORK_ISSUE", self.user_locale
-            )  # Raise with network error key
+            )
         except DiscoveryError:
             raise DiscoveryError(
                 "ERROR_NO_DEVICES_FOUND", self.user_locale
-            )  # Raise with standardized message
+            )
         except Exception as e:
             raise StateError(
                 "ERROR_UNEXPECTED", self.user_locale, detail=str(e)
-            )  # Use the unexpected error key
+            )
+
+    async def _get_port_names_via_udp(self):
+        """Get port names via direct UDP unicast to device IP."""
+        import asyncio
+        import socket
+        import json
+        from ..const import UDP_PORT, DISCOVERY_MESSAGE
+        
+        sock = None
+        try:
+            # Create UDP socket
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            
+            # Send discovery message directly to device IP
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(
+                None, sock.sendto, DISCOVERY_MESSAGE.encode('utf-8'), (self.ip, UDP_PORT)
+            )
+            
+            # Set timeout and wait for response
+            sock.settimeout(2.0)
+            
+            # Receive response
+            data, addr = await loop.run_in_executor(None, sock.recvfrom, 1024)
+            
+            # Parse response
+            raw_result = data.decode("utf-8", errors="replace")
+            json_data = json.loads(raw_result)
+            device_data = json_data.get("data", {})
+            
+            return device_data
+            
+        except socket.timeout:
+            raise ConnectionError("ERROR_NETWORK_ISSUE", self.user_locale)
+        except Exception as e:
+            raise StateError("ERROR_UNEXPECTED", self.user_locale, detail=str(e))
+        finally:
+            if sock:
+                try:
+                    sock.close()
+                except:
+                    pass
 
     async def change_port_name(self, port, new_name):
         """

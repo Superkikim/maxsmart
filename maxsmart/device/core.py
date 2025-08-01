@@ -130,11 +130,11 @@ class MaxSmartDevice(
 
     async def initialize_device(self, start_polling=None):
         """
-        Initialize device for HTTP operations only - no discovery.
+        Initialize device for HTTP operations and retrieve device information.
         
         Args:
             start_polling (bool): Override auto_polling setting for this initialization
-            
+        
         Raises:
             MaxSmartConnectionError: If HTTP connectivity fails
         """
@@ -145,14 +145,14 @@ class MaxSmartDevice(
             if should_start_polling and not self.is_polling:
                 await self.start_adaptive_polling()
             return
-            
+        
         try:
             logging.debug(f"Initializing device {self.ip} via HTTP")
             
             # Test HTTP connectivity and get data for format detection
             response = await self._send_command(CMD_GET_DEVICE_DATA)
             data = response.get("data", {})
-            
+
             if not data:
                 raise MaxSmartConnectionError(
                     user_locale=self.user_locale,
@@ -160,7 +160,26 @@ class MaxSmartDevice(
                     ip=self.ip,
                     detail="No data received from device during initialization"
                 )
-                
+
+            # Get device info via targeted UDP discovery
+            try:
+                from ..discovery import MaxSmartDiscovery
+                discovery_devices = await MaxSmartDiscovery.discover_maxsmart(ip=self.ip, enhance_with_hardware_ids=False)
+                if discovery_devices:
+                    device_info = discovery_devices[0]
+                    self.version = device_info.get("ver", None)
+                    self.name = device_info.get("name", None) 
+                    self.sn = device_info.get("sn", None)
+                else:
+                    self.version = None
+                    self.name = None
+                    self.sn = None
+            except Exception as e:
+                logging.debug(f"Could not get device info via discovery for {self.ip}: {e}")
+                self.version = None
+                self.name = None
+                self.sn = None
+
             # Auto-detect watt format based on data sample - FIXED LOGIC
             watt_values = data.get("watt", [])
             
@@ -192,6 +211,16 @@ class MaxSmartDevice(
                 log_message(DEVICE_ERROR_MESSAGES, "ERROR_WATT_DATA_NOT_FOUND",
                            self.user_locale, level=logging.ERROR, ip=self.ip)
                 
+            # Retrieve port names automatically during initialization
+            # Skip if this is a temporary device created during discovery enhancement
+            if not getattr(self, '_is_temp_device', False):
+                try:
+                    await self.retrieve_port_names()
+                    logging.debug(f"Retrieved port names for device {self.ip}")
+                except Exception as e:
+                    logging.debug(f"Could not retrieve port names for device {self.ip}: {e}")
+                    # Keep default names, don't fail initialization
+            
             self._is_initialized = True
             
             logging.debug(f"Device initialized: {self.ip} - Format: {self._watt_format}")

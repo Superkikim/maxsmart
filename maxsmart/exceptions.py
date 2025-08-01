@@ -9,8 +9,7 @@ from .const import (
     DEVICE_STATE_ERROR_MESSAGES,
     FIRMWARE_ERROR_MESSAGES,
     STATE_ERROR_MESSAGES,
-    LIMITED_SUPPORT_FIRMWARE,
-    SUPPORTED_FIRMWARE_VERSION
+    IN_DEVICE_NAME_VERSION
 )
 
 from .utils import (
@@ -225,7 +224,7 @@ class FirmwareError(MaxSmartError):
         message = get_user_message(FIRMWARE_ERROR_MESSAGES, error_key, self.user_locale, **kwargs)
         
         # Add specific firmware limitation info
-        if self.firmware_version == LIMITED_SUPPORT_FIRMWARE:
+        if self.firmware_version != IN_DEVICE_NAME_VERSION:
             message += f" Your firmware version {self.firmware_version} supports basic commands, but not port name management."
         else:
             message += f" Your firmware version {self.firmware_version} is not supported. Port name management requires firmware version {self.required_version}."

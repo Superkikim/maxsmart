@@ -291,6 +291,7 @@ class MaxSmartDiscovery:
             try:
                 # Create temporary device instance to fetch hardware IDs
                 temp_device = MaxSmartDevice(ip)
+                temp_device._is_temp_device = True  # Mark as temp to avoid circular calls
                 await temp_device.initialize_device()
                 
                 # Get hardware identifiers
