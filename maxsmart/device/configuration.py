@@ -12,8 +12,7 @@ from ..const import (
     CMD_SET_PORT_NAME,
     MAX_PORT_NUMBER,
     MAX_PORT_NAME_LENGTH,
-    SUPPORTED_FIRMWARE_VERSION,
-    LIMITED_SUPPORT_FIRMWARE,
+    IN_DEVICE_NAME_VERSION,
     RESPONSE_CODE_SUCCESS,
 )
 
@@ -82,18 +81,13 @@ class ConfigurationMixin:
         Raises:
             StateError: If the port number is invalid, the new name is empty, or the new name is too long.
             CommandError: If there's an error sending the command to the device.
-            FirmwareError: If the device firmware is not supported for this operation.
+            FirmwareError: If the device firmware does not support in-device port renaming.
         """
-        # Check firmware version
-        if self.version != SUPPORTED_FIRMWARE_VERSION:
-            if self.version == LIMITED_SUPPORT_FIRMWARE:
-                raise FirmwareError(
-                    self.ip, self.version, self.user_locale, SUPPORTED_FIRMWARE_VERSION
-                )
-            else:
-                raise FirmwareError(
-                    self.ip, self.version, self.user_locale, SUPPORTED_FIRMWARE_VERSION
-                )
+        # Check firmware version for in-device renaming support
+        if self.version != IN_DEVICE_NAME_VERSION:
+            raise FirmwareError(
+                self.ip, self.version, self.user_locale, IN_DEVICE_NAME_VERSION
+            )
 
         if not 0 <= port <= MAX_PORT_NUMBER:
             raise DeviceOperationError(

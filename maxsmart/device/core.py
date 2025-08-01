@@ -8,8 +8,9 @@ from ..const import (
     DEFAULT_PORT_NAMES,
     CMD_GET_DEVICE_DATA,
     CMD_GET_DEVICE_IDS,
+    DEVICE_ERROR_MESSAGES,
 )
-from ..utils import get_user_locale
+from ..utils import get_user_locale, log_message
 from ..discovery import MaxSmartDiscovery
 from ..exceptions import ConnectionError as MaxSmartConnectionError, DiscoveryError, DeviceOperationError
 from .commands import CommandMixin
@@ -100,13 +101,13 @@ class MaxSmartDevice(
             aiohttp.ClientSession: Configured HTTP session
         """
         if self._session is None or self._session.closed:
-            # Create connector with reasonable limits
+            # Create connector with reasonable limits and force_close for IoT devices
             connector = aiohttp.TCPConnector(
                 limit=self.DEFAULT_CONNECTOR_LIMIT,
                 limit_per_host=self.DEFAULT_CONNECTOR_LIMIT_PER_HOST,
                 ttl_dns_cache=300,  # DNS cache for 5 minutes
                 use_dns_cache=True,
-                keepalive_timeout=30,
+                force_close=True,           # Force close connections for IoT devices
                 enable_cleanup_closed=True
             )
             
@@ -120,10 +121,10 @@ class MaxSmartDevice(
             self._session = aiohttp.ClientSession(
                 connector=connector,
                 timeout=timeout,
-                headers={'User-Agent': 'MaxSmart-Python/2.0.3'}
+                headers={'User-Agent': 'MaxSmart-Python/2.0.4'}
             )
             
-            logging.debug(f"Created new HTTP session for device {self.ip}")
+            logging.debug(f"Created new HTTP session for device {self.ip} with force_close=True")
                 
         return self._session
 
@@ -160,34 +161,36 @@ class MaxSmartDevice(
                     detail="No data received from device during initialization"
                 )
                 
-            # Auto-detect watt format based on data sample
+            # Auto-detect watt format based on data sample - FIXED LOGIC
             watt_values = data.get("watt", [])
             
             if watt_values:
                 sample_value = watt_values[0]
                 logging.debug(f"Auto-detection sample: {sample_value} (type: {type(sample_value)})")
                 
-                # Check if it's a string (float format like "5.20")
-                if isinstance(sample_value, str):
-                    self._watt_multiplier = 1.0  # String floats are in watts
-                    self._watt_format = "string_float"
-                    logging.debug(f"Auto-detected format: string float (watts) - sample: {sample_value}")
+                if isinstance(sample_value, (float, str)):
+                    # Float or string = watts
+                    self._watt_multiplier = 1.0
+                    self._watt_format = "float_watt"
+                    logging.debug(f"Auto-detected format: float/string watts - sample: {sample_value}")
+                elif isinstance(sample_value, int):
+                    # Integer = milliwatts, convert to watts
+                    self._watt_multiplier = 0.001
+                    self._watt_format = "int_milliwatt"
+                    logging.debug(f"Auto-detected format: integer milliwatts - sample: {sample_value}")
                 else:
-                    # It's an integer/number, check magnitude to distinguish watts vs milliwatts
-                    float_value = float(sample_value)
-                    if float_value > 100:  # Likely milliwatts (anything >100 is probably mW)
-                        self._watt_multiplier = 0.001  # Convert milliwatts to watts
-                        self._watt_format = "int_milliwatt"
-                        logging.debug(f"Auto-detected format: integer milliwatts - sample: {sample_value}")
-                    else:
-                        self._watt_multiplier = 1.0  # Integer watts (rare but possible)
-                        self._watt_format = "int_watt"
-                        logging.debug(f"Auto-detected format: integer watts - sample: {sample_value}")
+                    # Unknown type - keep raw value for debugging
+                    self._watt_multiplier = 1.0
+                    self._watt_format = "unknown_format"
+                    log_message(DEVICE_ERROR_MESSAGES, "UNKNOWN_WATT_FORMAT", 
+                               self.user_locale, level=logging.WARNING, 
+                               ip=self.ip, data_type=type(sample_value).__name__, sample_value=sample_value)
             else:
-                # No watt data - use default
+                # No watt data - API may have changed
                 self._watt_multiplier = 1.0
-                self._watt_format = "default_watt"
-                logging.debug(f"No watt data for format detection, using default")
+                self._watt_format = "no_data"
+                log_message(DEVICE_ERROR_MESSAGES, "ERROR_WATT_DATA_NOT_FOUND",
+                           self.user_locale, level=logging.ERROR, ip=self.ip)
                 
             self._is_initialized = True
             

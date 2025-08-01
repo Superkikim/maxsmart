@@ -1,12 +1,18 @@
 # MaxSmart Python Module
 
-[![PyPI version](https://img.shields.io/badge/PyPI-2.0.3-blue.svg)](https://pypi.org/project/maxsmart/)
+[![PyPI version](https://img.shields.io/badge/PyPI-2.0.4-blue.svg)](https://pypi.org/project/maxsmart/)
 [![Python versions](https://img.shields.io/badge/Python-3.7%2B-blue.svg)](https://pypi.org/project/maxsmart/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Version:** 2.0.3
+**Version:** 2.0.4
 
 A comprehensive Python library for controlling Revogi-based Max Hauri MaxSmart PowerStrips and Smart Plugs over local network. Features intelligent auto-detection, adaptive polling, real-time monitoring, and robust async architecture.
+
+## ☕ Support My Work
+
+If this plugin helps you, consider supporting its development:
+
+[![Support me on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/nexusplugins)
 
 ## 🎯 What's New in v2.0
 
@@ -18,7 +24,6 @@ A comprehensive Python library for controlling Revogi-based Max Hauri MaxSmart P
 - **Enhanced error handling** - Robust retry logic with localized messages
 - **Session management** - Connection pooling and automatic cleanup
 - **Advanced statistics** - Hourly, daily, monthly data with visualization support
-- **Device time access** - Real-time clock management
 
 ## 🔧 Supported Hardware
 
