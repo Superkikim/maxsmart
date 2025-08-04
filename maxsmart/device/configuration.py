@@ -1,4 +1,4 @@
-# device/configuration.py
+# maxsmart/device/configuration.py
 
 from ..exceptions import (
     StateError,
@@ -16,14 +16,20 @@ from ..const import (
     RESPONSE_CODE_SUCCESS,
     UDP_PORT,
     DISCOVERY_MESSAGE,
+    UNSUPPORTED_COMMAND_MESSAGES,
 )
+from ..utils import get_user_message
 
 
 class ConfigurationMixin:
     """Mixin class providing device configuration functionality (port names, etc.)."""
 
     async def retrieve_port_names(self):
-        """Retrieve current port names by sending a direct UDP request to the device."""
+        """
+        Retrieve current port names by sending a direct UDP request to the device.
+        
+        Note: Works with both protocols, but UDP V3 devices may not have configurable names.
+        """
         if not self.ip:
             raise StateError(
                 "ERROR_MISSING_EXPECTED_DATA", self.user_locale
@@ -113,16 +119,34 @@ class ConfigurationMixin:
     async def change_port_name(self, port, new_name):
         """
         Change the name of a specific port asynchronously.
+        
+        Note: Only available on HTTP protocol devices with firmware v1.30.
 
         Args:
             port (int): The port number (0-6) to change the name for.
             new_name (str): The new name for the port (max 21 characters).
 
         Raises:
+            CommandError: If device doesn't support port naming (UDP V3 devices)
             StateError: If the port number is invalid, the new name is empty, or the new name is too long.
-            CommandError: If there's an error sending the command to the device.
             FirmwareError: If the device firmware does not support in-device port renaming.
         """
+        # Check protocol support first
+        if hasattr(self, 'protocol') and self.protocol == 'udp_v3':
+            error_msg = get_user_message(
+                UNSUPPORTED_COMMAND_MESSAGES,
+                "ERROR_UDP_V3_LIMITATION",
+                self.user_locale,
+                feature="port naming"
+            )
+            raise CommandError(
+                "ERROR_UNSUPPORTED_COMMAND",
+                self.user_locale,
+                ip=self.ip,
+                protocol=self.protocol,
+                detail=error_msg
+            )
+        
         # Check firmware version for in-device renaming support
         if self.version != IN_DEVICE_NAME_VERSION:
             raise FirmwareError(

@@ -7,7 +7,9 @@ from ..const import (
     MAX_PORT_NUMBER,
     CURRENCY_SYMBOLS,
     STATISTICS_TIME_FRAME,
+    UNSUPPORTED_COMMAND_MESSAGES,
 )
+from ..utils import get_user_message
 
 
 class StatisticsMixin:
@@ -16,10 +18,30 @@ class StatisticsMixin:
     async def get_statistics(self, port, stat_type):
         """
         Retrieve statistics for a specific port or all ports.
+        
+        Note: Only available on HTTP protocol devices.
+        
         :param port: The port number (0 for all ports).
         :param stat_type: The type of statistics (0 = hourly, 1 = daily, 2 = monthly).
         :return: A dictionary containing statistics data.
+        
+        :raises CommandError: If device doesn't support statistics (UDP V3 devices)
         """
+        # Check protocol support
+        if hasattr(self, 'protocol') and self.protocol == 'udp_v3':
+            error_msg = get_user_message(
+                UNSUPPORTED_COMMAND_MESSAGES,
+                "ERROR_UDP_V3_LIMITATION",
+                self.user_locale,
+                feature="statistics"
+            )
+            raise CommandError(
+                "ERROR_UNSUPPORTED_COMMAND",
+                self.user_locale,
+                ip=self.ip,
+                protocol=self.protocol,
+                detail=error_msg
+            )
 
         if not (0 <= port <= MAX_PORT_NUMBER):
             raise DeviceOperationError(
@@ -111,6 +133,9 @@ class StatisticsMixin:
     async def get_power_data(self, port):
         """
         Retrieve real-time power consumption data for a specific port.
+        
+        Works with both HTTP and UDP V3 protocols.
+        
         :param port: The port number (1-6).
         :return: Dictionary containing power data.
         """

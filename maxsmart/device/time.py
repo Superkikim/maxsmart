@@ -1,7 +1,8 @@
-# device/time.py
+# maxsmart/device/time.py
 
 from ..exceptions import CommandError, StateError
-from ..const import CMD_GET_DEVICE_TIME
+from ..const import CMD_GET_DEVICE_TIME, UNSUPPORTED_COMMAND_MESSAGES
+from ..utils import get_user_message
 
 
 class TimeMixin:
@@ -11,14 +12,32 @@ class TimeMixin:
         """
         Retrieve the current date and time from the device's real-time clock.
         
+        Note: Only available on HTTP protocol devices.
+        
         Returns:
             dict: Dictionary containing device time information
                   Format: {"time": "YYYY-MM-DD,HH:MM:SS"}
         
         Raises:
-            CommandError: If the command fails to execute
+            CommandError: If device doesn't support time queries (UDP V3 devices) or command fails
             StateError: If device response is invalid
         """
+        # Check protocol support
+        if hasattr(self, 'protocol') and self.protocol == 'udp_v3':
+            error_msg = get_user_message(
+                UNSUPPORTED_COMMAND_MESSAGES,
+                "ERROR_UDP_V3_LIMITATION",
+                self.user_locale,
+                feature="device time"
+            )
+            raise CommandError(
+                "ERROR_UNSUPPORTED_COMMAND",
+                self.user_locale,
+                ip=self.ip,
+                protocol=self.protocol,
+                detail=error_msg
+            )
+        
         try:
             response = await self._send_command(CMD_GET_DEVICE_TIME)
             

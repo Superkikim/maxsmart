@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
 # maxsmart_tests_async.py
 """
+Enhanced MaxSmart test script with dual protocol support (HTTP + UDP V3).
+
 This script discovers MaxSmart devices, allows the user to select a specific device,
-and tests control operations on the power strip by cycling selected port states.
-"""
-"""
-This script requires the following modules:
-- matplotlib
-Please install them using pip:
-pip install -r requirements.txt
+and tests control operations with full user control over which ports to test.
 """
 import asyncio, json, calendar
 from maxsmart import MaxSmartDiscovery, MaxSmartDevice
@@ -18,11 +14,11 @@ import numpy as np
 from datetime import datetime, timedelta
 
 async def discover_devices():
-    """Discover MaxSmart devices on the network."""
+    """Discover MaxSmart devices on the network with protocol detection."""
     print("Discovering MaxSmart devices...")
     try:
         discovery = MaxSmartDiscovery()
-        devices = await discovery.discover_maxsmart()  # Make this call async
+        devices = await discovery.discover_maxsmart()  # Now includes protocol detection
         return devices
     except ConnectionError as ce:
         print(f"Connection error occurred during discovery: {ce}")
@@ -35,18 +31,38 @@ async def discover_devices():
         return []
 
 async def select_device(devices):
-    """Allow the user to select a specific device."""
+    """Allow the user to select a specific device with protocol information."""
     if not devices:
         print("No devices available for selection.")
         return None
 
     device_menu = {}
+    print("\nAvailable MaxSmart devices:")
+    print("-" * 80)
+    
     for i, device in enumerate(devices, start=1):
         sn = device["sn"]
         name = device["name"]
         ip = device["ip"]
+        protocol = device.get("protocol", "unknown")
+        firmware = device.get("ver", "Unknown")
+        
+        # Protocol emoji and feature info
+        if protocol == "http":
+            protocol_emoji = "🌐"
+            features = "Full features"
+        elif protocol == "udp_v3":
+            protocol_emoji = "📡"
+            features = "Basic features only"
+        else:
+            protocol_emoji = "❓"
+            features = "Unknown capabilities"
+        
         device_menu[i] = device
-        print(f"{i}. SN: {sn}, Name: {name}, IP: {ip}")
+        print(f"{i}. {protocol_emoji} {name} ({ip})")
+        print(f"   Protocol: {protocol.upper()} | FW: {firmware} | SN: {sn}")
+        print(f"   {features}")
+        print()
 
     while True:
         choice = input("Select a device by number: ")
@@ -59,10 +75,22 @@ async def select_device(devices):
         except ValueError:
             print("Invalid input. Please enter a number.")
 
-async def confirm_proceed(name, ip, sn):
+async def confirm_proceed(name, ip, sn, protocol):
     """Confirm with the user before proceeding with operations."""
-    print(f"Selected device: {name}, IP: {ip}, SN: {sn}")
-    proceed = input("Continue with this device? (Y/N, default is Y): ")
+    protocol_emoji = "🌐" if protocol == "http" else "📡" if protocol == "udp_v3" else "❓"
+    
+    print(f"\n{protocol_emoji} Selected device: {name} ({protocol.upper()})")
+    print(f"IP: {ip} | SN: {sn}")
+    
+    if protocol == "http":
+        print("📋 Available features: Port control, data retrieval, statistics, time, hardware IDs")
+    elif protocol == "udp_v3":
+        print("📋 Available features: Port control, data retrieval only")
+        print("⚠️  Advanced features (statistics, time, hardware IDs) not available")
+    else:
+        print("⚠️  Protocol unknown - limited functionality expected")
+    
+    proceed = input("\nContinue with this device? (Y/N, default is Y): ")
     if proceed.strip().lower() not in ("y", ""):
         print("Aborted.")
         return False
@@ -70,7 +98,7 @@ async def confirm_proceed(name, ip, sn):
 
 async def select_port(port_mapping):
     """Prompt the user to select a port (1 to 6) to test, displaying current port names."""
-    print("Available ports:")
+    print("\nAvailable ports:")
     for i in range(1, 7):
         print(f"Port {i}: {port_mapping.get(f'Port {i}', f'Port {i}')}")
     
@@ -203,9 +231,9 @@ async def retrieve_consumption_data(selected_strip):
     """Retrieve real-time consumption data for each port and return it."""
     consumption_data = []
     try:
-        port_mapping = await selected_strip.retrieve_port_names()  # Make this call async
+        port_mapping = await selected_strip.retrieve_port_names()  # Works with both protocols
         for port in range(1, 7):
-            power_data = await selected_strip.get_power_data(port)  # Make this call async
+            power_data = await selected_strip.get_power_data(port)  # Works with both protocols
             watt_value = float(power_data["watt"])  # Ensure watt value is a float
             consumption_data.append([port_mapping[f"Port {port}"], watt_value])  # Append real port names and wattage
     except Exception as e:
@@ -213,41 +241,54 @@ async def retrieve_consumption_data(selected_strip):
     return consumption_data
 
 async def test_data_retrieval(device):
+    """Test statistics data retrieval (HTTP only)."""
+    if hasattr(device, 'protocol') and device.protocol == 'udp_v3':
+        print("⚠️  Statistics not available on UDP V3 devices")
+        return
+        
     print("\nTesting Hourly Data:")
-    hourly_data = await device.get_statistics(0, 0)  # port 0, hourly
-    print(json.dumps(hourly_data, indent=2))
-    
-    # Process hourly data (keeping this as is)
-    current_time = datetime.now().replace(minute=0, second=0, microsecond=0)
-    hour_labels = [(current_time - timedelta(hours=23-i)).strftime('%H:00') for i in range(24)]
-    print("\nHourly Data Interpretation:")
-    for i, (label, watt) in enumerate(zip(hour_labels, hourly_data['watt'])):
-        print(f"{label}: {watt:.2f} W {'(incomplete)' if i == 23 else ''}")
+    try:
+        hourly_data = await device.get_statistics(0, 0)  # port 0, hourly
+        print(json.dumps(hourly_data, indent=2))
+        
+        # Process hourly data
+        current_time = datetime.now().replace(minute=0, second=0, microsecond=0)
+        hour_labels = [(current_time - timedelta(hours=23-i)).strftime('%H:00') for i in range(24)]
+        print("\nHourly Data Interpretation:")
+        for i, (label, watt) in enumerate(zip(hour_labels, hourly_data['watt'])):
+            print(f"{label}: {watt:.2f} W {'(incomplete)' if i == 23 else ''}")
 
-    print("\nTesting Daily Data:")
-    daily_data = await device.get_statistics(0, 1)  # port 0, daily
-    print(json.dumps(daily_data, indent=2))
-    
-    # Process daily data
-    current_date = datetime.now().date()
-    day_labels = [(current_date - timedelta(days=29-i)).strftime('%Y-%m-%d') for i in range(30)]
-    print("\nDaily Data Interpretation:")
-    for i, (label, watt) in enumerate(zip(day_labels, daily_data['watt'])):
-        print(f"{label}: {watt/1000:.3f} kWh {'(incomplete)' if i == 29 else ''}")
+        print("\nTesting Daily Data:")
+        daily_data = await device.get_statistics(0, 1)  # port 0, daily
+        print(json.dumps(daily_data, indent=2))
+        
+        # Process daily data
+        current_date = datetime.now().date()
+        day_labels = [(current_date - timedelta(days=29-i)).strftime('%Y-%m-%d') for i in range(30)]
+        print("\nDaily Data Interpretation:")
+        for i, (label, watt) in enumerate(zip(day_labels, daily_data['watt'])):
+            print(f"{label}: {watt/1000:.3f} kWh {'(incomplete)' if i == 29 else ''}")
 
-    print("\nTesting Monthly Data:")
-    monthly_data = await device.get_statistics(0, 2)  # port 0, monthly
-    print(json.dumps(monthly_data, indent=2))
-    
-    # Process monthly data
-    current_month = datetime.now().replace(day=1)
-    month_labels = [(current_month - timedelta(days=30*i)).strftime('%b %Y') for i in range(11, -1, -1)]
-    print("\nMonthly Data Interpretation:")
-    for i, (label, watt) in enumerate(zip(month_labels, monthly_data['watt'])):
-        print(f"{label}: {watt/1000:.3f} kWh {'(incomplete)' if i == 11 else ''}")   
+        print("\nTesting Monthly Data:")
+        monthly_data = await device.get_statistics(0, 2)  # port 0, monthly
+        print(json.dumps(monthly_data, indent=2))
+        
+        # Process monthly data
+        current_month = datetime.now().replace(day=1)
+        month_labels = [(current_month - timedelta(days=30*i)).strftime('%b %Y') for i in range(11, -1, -1)]
+        print("\nMonthly Data Interpretation:")
+        for i, (label, watt) in enumerate(zip(month_labels, monthly_data['watt'])):
+            print(f"{label}: {watt/1000:.3f} kWh {'(incomplete)' if i == 11 else ''}")
+            
+    except Exception as e:
+        print(f"❌ Statistics test failed: {e}")
                  
 async def retrieve_time_based_data(powerstrip, data_type):
-    """Retrieve hourly, daily, or monthly data for the strip."""
+    """Retrieve hourly, daily, or monthly data for the strip (HTTP only)."""
+    if hasattr(powerstrip, 'protocol') and powerstrip.protocol == 'udp_v3':
+        print(f"⚠️  {data_type.capitalize()} statistics not available on UDP V3 devices")
+        return None, None
+        
     print(f"Retrieving {data_type} consumption data...")
     
     # Get data for all ports (port 0 = sum of all ports)
@@ -344,7 +385,7 @@ def get_units_and_divisor(firmware_version, data_type):
         return "kWh", 1
 
 def plot_chandelle_diagram(port_mapping, data, data_type, firmware_version):
-    """Plot consumption data with proper units based on firmware version."""
+    """Plot consumption data with proper units based on firmware version (HTTP only)."""
     fig, ax = plt.subplots(figsize=(15, 8))
     
     # Get units and divisor
@@ -405,57 +446,124 @@ def plot_chandelle_diagram(port_mapping, data, data_type, firmware_version):
     ax.legend(title='Ports', bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.tight_layout()
     plt.show()
+
+async def test_protocol_specific_features(selected_strip):
+    """Test protocol-specific features."""
+    protocol = getattr(selected_strip, 'protocol', 'unknown')
+    
+    print(f"\n🧪 Testing {protocol.upper()} Protocol Features")
+    print("=" * 50)
+    
+    if protocol == "http":
+        print("🌐 HTTP Protocol - Testing Advanced Features")
+        
+        # Test device time
+        try:
+            print("🕐 Testing device time...")
+            time_data = await selected_strip.get_device_time()
+            print(f"✅ Device time: {time_data['time']}")
+        except Exception as e:
+            print(f"❌ Device time failed: {e}")
+        
+        # Test hardware identifiers
+        try:
+            print("🔧 Testing hardware identifiers...")
+            hw_ids = await selected_strip.get_device_identifiers()
+            print(f"✅ CPU ID: {hw_ids.get('cpuid', 'N/A')[:16]}...")
+            print(f"✅ Server: {hw_ids.get('server', 'N/A')}")
+        except Exception as e:
+            print(f"❌ Hardware IDs failed: {e}")
+            
+    elif protocol == "udp_v3":
+        print("📡 UDP V3 Protocol - Testing Limitations")
+        
+        # Test that unsupported features are blocked
+        try:
+            print("🕐 Testing device time (should fail)...")
+            await selected_strip.get_device_time()
+            print("❌ Device time should not work on UDP V3!")
+        except Exception as e:
+            print(f"✅ Correctly blocked: {type(e).__name__}")
+        
+        try:
+            print("🔧 Testing hardware IDs (should fail)...")
+            await selected_strip.get_device_identifiers()
+            print("❌ Hardware IDs should not work on UDP V3!")
+        except Exception as e:
+            print(f"✅ Correctly blocked: {type(e).__name__}")
+            
+        try:
+            print("📈 Testing statistics (should fail)...")
+            await selected_strip.get_statistics(0, 0)
+            print("❌ Statistics should not work on UDP V3!")
+        except Exception as e:
+            print(f"✅ Correctly blocked: {type(e).__name__}")
+    
+    else:
+        print("❓ Unknown protocol - skipping advanced tests")
       
 async def main():
     selected_strip = None
     try:
-        """Main function to run all tests."""
-        devices = await discover_devices()  # Discover MaxSmart devices
+        """Main function to run all tests with protocol support."""
+        devices = await discover_devices()  # Now includes protocol detection
         if devices:
-            print("Available MaxSmart devices:")
-            selected_device = await select_device(devices)  # Allow the user to select a device
+            print("Available MaxSmart devices with protocol information:")
+            selected_device = await select_device(devices)  # Enhanced device selection
             
-            if not await confirm_proceed(selected_device["name"], selected_device["ip"], selected_device["sn"]):
+            if not await confirm_proceed(selected_device["name"], selected_device["ip"], 
+                                       selected_device["sn"], selected_device.get("protocol", "unknown")):
                 return
             
-            selected_strip = MaxSmartDevice(selected_device["ip"])  # Create instance for the selected strip
-            await selected_strip.initialize_device()  # Initialize the device
+            # Create device with detected protocol
+            protocol = selected_device.get("protocol")
+            selected_strip = MaxSmartDevice(selected_device["ip"], protocol=protocol)
+            await selected_strip.initialize_device()
             
-            port_mapping = await selected_strip.retrieve_port_names()  # Retrieve current port names
-            firmware_version = selected_strip.version  # Get firmware version
+            port_mapping = await selected_strip.retrieve_port_names()  # Works with both protocols
+            firmware_version = selected_strip.version
             
-            print(f"Device firmware version: {firmware_version}")
+            print(f"\n🔗 Connected to {selected_strip.name}")
+            print(f"   Protocol: {protocol.upper()} | Firmware: {firmware_version}")
 
             # Ask user what they want to test
             while True:
                 try:
-                    print("\nWhat would you like to test?")
+                    print(f"\n🧪 What would you like to test on this {protocol.upper()} device?")
                     print("1. Port Control (Turn ON/OFF)")
                     print("2. Master Port Control (Turn all ON/OFF)")
                     print("3. Real-time Consumption Data")
-                    print("4. Statistics and Graphs (Hourly/Daily/Monthly)")
-                    print("5. Raw Statistics Data")
-                    print("6. Exit")
                     
-                    choice = input("Select an option (1-6): ")
+                    if protocol == "http":
+                        print("4. Statistics and Graphs (Hourly/Daily/Monthly)")
+                        print("5. Raw Statistics Data")
+                        print("6. Protocol-specific Features (Time, Hardware IDs)")
+                        print("7. Exit")
+                        max_choice = 7
+                    else:
+                        print("4. Protocol-specific Features (Test limitations)")
+                        print("5. Exit")
+                        max_choice = 5
+                    
+                    choice = input(f"Select an option (1-{max_choice}): ")
                     
                     if choice == "1":
                         # Port control testing
-                        port = await select_port(port_mapping)  # Get the port number from the user
+                        port = await select_port(port_mapping)  # User selects port
                         
                         # First, check current state
                         print(f"\nChecking current state of port {port}...")
                         current_state = await check_port_state(selected_strip, port)
                         
                         if current_state is not None:
-                            action = await select_power_action()  # Ask user for the action they want to perform
+                            action = await select_power_action()  # User selects action
                             
                             if action == "1":  # Power ON
                                 await power_on_port(selected_strip, port)
                             else:  # Power OFF
                                 await power_off_port(selected_strip, port)
                         
-                        input("\nPress Enter to continue...")  # Pause before returning to menu
+                        input("\nPress Enter to continue...")
                     
                     elif choice == "2":
                         # Testing Master port operations
@@ -466,7 +574,7 @@ async def main():
                         current_state = await check_port_state(selected_strip, 0)
                         
                         if current_state is not None:
-                            action = await select_power_action()  # Ask user for the action they want to perform
+                            action = await select_power_action()  # User selects action
                             
                             if action == "1":  # Power ON
                                 await power_on_port(selected_strip, 0)
@@ -478,17 +586,17 @@ async def main():
                             consumption_data = await retrieve_consumption_data(selected_strip)
                             display_table(["Port Name", "Watt"], consumption_data)
                         
-                        input("\nPress Enter to continue...")  # Pause before returning to menu
+                        input("\nPress Enter to continue...")
                     
                     elif choice == "3":
                         # Real-time consumption data
                         print("Current real-time consumption data:")
                         consumption_data = await retrieve_consumption_data(selected_strip)
                         display_table(["Port Name", "Watt"], consumption_data)
-                        input("\nPress Enter to continue...")  # Pause before returning to menu
+                        input("\nPress Enter to continue...")
                     
-                    elif choice == "4":
-                        # Statistics and graphs
+                    elif choice == "4" and protocol == "http":
+                        # Statistics and graphs (HTTP only)
                         print("Displaying statistics and graphs...")
                         
                         # Hourly data
@@ -515,19 +623,29 @@ async def main():
                         else:
                             print("No monthly data available")
                         
-                        input("\nPress Enter to continue...")  # Pause before returning to menu
+                        input("\nPress Enter to continue...")
                     
-                    elif choice == "5":
-                        # Raw statistics data
+                    elif choice == "5" and protocol == "http":
+                        # Raw statistics data (HTTP only)
                         await test_data_retrieval(selected_strip)
-                        input("\nPress Enter to continue...")  # Pause before returning to menu
+                        input("\nPress Enter to continue...")
                     
-                    elif choice == "6":
+                    elif choice == "6" and protocol == "http":
+                        # Protocol-specific features (HTTP)
+                        await test_protocol_specific_features(selected_strip)
+                        input("\nPress Enter to continue...")
+                    
+                    elif choice == "4" and protocol != "http":
+                        # Protocol-specific features (UDP V3 limitations)
+                        await test_protocol_specific_features(selected_strip)
+                        input("\nPress Enter to continue...")
+                    
+                    elif (choice == "7" and protocol == "http") or (choice == "5" and protocol != "http"):
                         print("Exiting...")
                         break
                     
                     else:
-                        print("Invalid choice. Please select 1-6.")
+                        print(f"Invalid choice. Please select 1-{max_choice}.")
                 
                 except KeyboardInterrupt:
                     print("\n\nOperation interrupted by user (Ctrl+C)")
@@ -537,7 +655,7 @@ async def main():
                     break
                         
         else:
-            print("No MaxSmart devices found.")  # Handle case where no devices are discovered
+            print("No MaxSmart devices found.")
 
     except KeyboardInterrupt:
         print("\n\nAborted by user (Ctrl+C)")
