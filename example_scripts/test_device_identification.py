@@ -2,8 +2,8 @@
 # test_device_identification.py
 
 """
-Comprehensive test script for MaxSmart device identification.
-Shows a complete table with all available identifiers for each device.
+Simplified test script for MaxSmart device identification.
+Shows the new simplified discovery format with essential identifiers.
 """
 
 import asyncio
@@ -17,14 +17,14 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-def print_separator(char="=", length=120):
+def print_separator(char="=", length=100):
     """Print a separator line."""
     print(char * length)
 
 def print_table_header():
     """Print the table header."""
     print_separator()
-    print("📋 MAXSMART DEVICE IDENTIFICATION TABLE")
+    print("📋 MAXSMART DEVICE IDENTIFICATION TABLE (Simplified Format)")
     print_separator()
     
     # Header row
@@ -32,11 +32,10 @@ def print_table_header():
         f"{'Device':<15} "
         f"{'IP':<15} "
         f"{'FW':<5} "
+        f"{'Serial Number':<20} "
         f"{'CPU ID':<26} "
         f"{'MAC (ARP)':<18} "
-        f"{'UDP Serial':<20} "
-        f"{'Best ID':<32} "
-        f"{'Status':<12}"
+        f"{'Server':<20}"
     )
     print(header)
     print_separator("-")
@@ -46,62 +45,30 @@ def print_device_row(device_info):
     name = device_info.get('name', 'Unknown')[:14]
     ip = device_info['ip']
     firmware = device_info.get('ver', 'N/A')
+    sn = device_info.get('sn', 'N/A')[:19]
     
-    identifiers = device_info.get('all_identifiers', {})
-    best_id = device_info.get('best_identifier', {})
-    
-    # Extract key identifiers with safe access
-    cpuid_data = identifiers.get('cpuid', {})
-    cpuid = cpuid_data.get('value', 'Not available') if cpuid_data else 'Not available'
+    # Extract simplified identifiers
+    cpuid = device_info.get('cpuid', 'Not available')
     if cpuid and cpuid != 'Not available':
         cpuid = str(cpuid)[:25]
-    else:
-        cpuid = 'Not available'
     
-    mac_arp_data = identifiers.get('mac_arp', {})
-    mac_arp = mac_arp_data.get('value', 'Not available') if mac_arp_data else 'Not available'
-    if mac_arp and mac_arp != 'Not available':
-        # Fix: Full MAC address is 17 characters, not 16!
-        mac_arp = str(mac_arp)[:17]
-    else:
-        mac_arp = 'Not available'
+    mac = device_info.get('mac', 'Not available')
+    if mac and mac != 'Not available':
+        mac = str(mac)[:17]
     
-    udp_serial_data = identifiers.get('udp_serial', {})
-    udp_serial = udp_serial_data.get('value', 'Not available') if udp_serial_data else 'Not available'
-    if udp_serial and udp_serial != 'Not available':
-        udp_serial = str(udp_serial)[:19]
-    else:
-        udp_serial = 'Not available'
-    
-    best_id_str = best_id.get('identifier', 'Not set') if best_id else 'Not set'
-    if best_id_str and best_id_str != 'Not set':
-        best_id_str = str(best_id_str)[:31]
-    else:
-        best_id_str = 'Not set'
-    
-    # Status based on best identifier reliability
-    if best_id and best_id.get('reliable', False):
-        if best_id.get('type') == 'cpuid':
-            status = "✅ Excellent"
-        elif best_id.get('type') == 'mac_address':
-            status = "✅ Very Good"
-        elif best_id.get('type') == 'udp_serial':
-            status = "⚠️ Good"
-        else:
-            status = "⚠️ Fair"
-    else:
-        status = "❌ Poor"
+    server = device_info.get('server', 'Not available')
+    if server and server != 'Not available':
+        server = str(server)[:19]
     
     # Print row
     row = (
         f"{name:<15} "
         f"{ip:<15} "
         f"{firmware:<5} "
+        f"{sn:<20} "
         f"{cpuid:<26} "
-        f"{mac_arp:<18} "
-        f"{udp_serial:<20} "
-        f"{best_id_str:<32} "
-        f"{status:<12}"
+        f"{mac:<18} "
+        f"{server:<20}"
     )
     print(row)
 
@@ -115,65 +82,26 @@ def print_detailed_view(device_info):
     print(f"Device Name: {device_info.get('name', 'Unknown')}")
     print(f"IP Address: {device_info['ip']}")
     print(f"Firmware: {device_info.get('ver', 'Unknown')}")
+    print(f"Serial Number: {device_info.get('sn', 'Unknown')}")
     print()
     
-    # Best identifier
-    best_id = device_info.get('best_identifier', {})
-    print(f"🎯 RECOMMENDED IDENTIFIER:")
-    print(f"   Value: {best_id.get('identifier', 'Not set')}")
-    print(f"   Type: {best_id.get('type', 'Unknown')}")
-    print(f"   Source: {best_id.get('source', 'Unknown')}")
-    print(f"   Reliable: {'✅ Yes' if best_id.get('reliable', False) else '❌ No'}")
+    # Essential identifiers
+    print(f"🎯 ESSENTIAL IDENTIFIERS:")
+    print(f"   CPU ID: {device_info.get('cpuid', 'Not available')}")
+    print(f"   MAC Address: {device_info.get('mac', 'Not available')}")
+    print(f"   Cloud Server: {device_info.get('server', 'Not available')}")
     print()
     
-    # All identifiers
-    all_ids = device_info.get('all_identifiers', {})
-    print(f"🔍 ALL AVAILABLE IDENTIFIERS:")
-    
-    for id_type, data in all_ids.items():
-        if isinstance(data, dict) and 'value' in data:
-            available = "✅" if data.get('available', False) else "❌"
-            value = data.get('value', 'Not available')
-            # Handle None values
-            if value is None:
-                value = 'Not available'
-            source = data.get('source', 'Unknown')
-            print(f"   {id_type:<12}: {available} {value} (from {source})")
-        elif id_type.endswith('_error'):
-            # Handle error entries
-            print(f"   ⚠️ {id_type}: {data}")
-    
-    # Show errors if any
-    error_keys = [k for k in all_ids.keys() if k.endswith('_error')]
-    if not error_keys:
-        print("   ✅ No errors encountered")
-    
+    # Port information
+    pname = device_info.get('pname', [])
+    print(f"🔌 PORT CONFIGURATION:")
+    print(f"   Port count: {len(pname)} configured names")
+    if pname:
+        for i, port_name in enumerate(pname, 1):
+            print(f"   Port {i}: {port_name}")
+    else:
+        print(f"   No port names configured (normal for FW 2.11+)")
     print()
-
-def get_default_gateway():
-    """Get the default gateway IP address."""
-    try:
-        import subprocess
-        import platform
-        
-        system = platform.system().lower()
-        if system == "windows":
-            result = subprocess.run(['route', 'print', '0.0.0.0'], capture_output=True, text=True)
-            for line in result.stdout.split('\n'):
-                if '0.0.0.0' in line and 'Gateway' not in line:
-                    parts = line.split()
-                    if len(parts) >= 3:
-                        return parts[2]  # Gateway IP
-        elif system in ["linux", "darwin"]:
-            result = subprocess.run(['ip', 'route', 'show', 'default'], capture_output=True, text=True)
-            for line in result.stdout.split('\n'):
-                if 'default via' in line:
-                    parts = line.split()
-                    if len(parts) >= 3:
-                        return parts[2]  # Gateway IP
-        return None
-    except:
-        return None
 
 def test_getmac_functionality():
     """Test getmac library functionality."""
@@ -181,20 +109,14 @@ def test_getmac_functionality():
     try:
         from getmac import get_mac_address
         
-        # Try to get default gateway
-        gateway_ip = get_default_gateway()
-        if gateway_ip:
-            print(f"   Default gateway: {gateway_ip}")
-            test_mac = get_mac_address(ip=gateway_ip)
-            if test_mac:
-                print(f"   ✅ getmac available - Gateway MAC: {test_mac}")
-                return True
-            else:
-                print(f"   ⚠️ getmac available but no MAC found for gateway")
-                return True  # Still available, just no result
+        # Try to get MAC for localhost
+        test_mac = get_mac_address(interface="eth0")
+        if test_mac:
+            print(f"   ✅ getmac available - Local interface MAC found")
+            return True
         else:
-            print(f"   ⚠️ getmac available but couldn't find default gateway")
-            return True  # Still available
+            print(f"   ⚠️ getmac available but no MAC found for eth0")
+            return True  # Still available, just no result
     except ImportError:
         print(f"   ❌ getmac library not installed")
         return False
@@ -203,10 +125,10 @@ def test_getmac_functionality():
         return False
 
 async def test_all_devices():
-    """Test identification for all discovered devices."""
+    """Test simplified identification for all discovered devices."""
     
-    print("🔍 MaxSmart Device Identification Test")
-    print("Testing all available identification methods...")
+    print("🔍 MaxSmart Device Identification Test (Simplified)")
+    print("Testing simplified discovery format...")
     print()
     
     try:
@@ -214,9 +136,9 @@ async def test_all_devices():
         getmac_available = test_getmac_functionality()
         print()
         
-        # Discover devices (without hardware enhancement to get raw UDP data)
+        # Discover devices (now always includes essential hardware identifiers)
         print("📡 Discovering devices...")
-        devices = await MaxSmartDiscovery.discover_maxsmart(enhance_with_hardware_ids=False)
+        devices = await MaxSmartDiscovery.discover_maxsmart()
         
         if not devices:
             print("❌ No MaxSmart devices found")
@@ -225,93 +147,38 @@ async def test_all_devices():
         print(f"✅ Found {len(devices)} device(s)")
         print()
         
-        # Test each device for all identification methods
-        device_results = []
-        
-        for i, device_info in enumerate(devices, 1):
-            ip = device_info['ip']
-            name = device_info.get('name', f'Device {i}')
-            
-            print(f"🔍 Testing device {i}/{len(devices)}: {name} ({ip})")
-            
-            device = None
-            try:
-                # Initialize device
-                device = MaxSmartDevice(ip)
-                device.udp_serial = device_info.get('sn', '')  # Store UDP serial for comparison
-                await device.initialize_device()
-                
-                # Get all available identifiers
-                all_identifiers = await device.get_all_identifiers()
-                
-                # Get best identifier
-                best_identifier = await device.get_best_unique_identifier()
-                
-                # Store results
-                device_result = {
-                    **device_info,
-                    'all_identifiers': all_identifiers,
-                    'best_identifier': best_identifier
-                }
-                device_results.append(device_result)
-                
-                print(f"   ✅ Completed")
-                
-            except Exception as e:
-                print(f"   ❌ Error: {type(e).__name__}: {e}")
-                # Add error result
-                device_result = {
-                    **device_info,
-                    'all_identifiers': {},
-                    'best_identifier': {'identifier': f"ip_{ip.replace('.', '_')}", 'type': 'ip_address', 'reliable': False},
-                    'error': str(e)
-                }
-                device_results.append(device_result)
-                
-            finally:
-                if device:
-                    await device.close()
-        
-        print()
-        
         # Display results table
         print_table_header()
-        for device_result in device_results:
+        for device_result in devices:
             print_device_row(device_result)
         
         print_separator()
         
         # Statistics
-        total_devices = len(device_results)
-        excellent_count = sum(1 for d in device_results 
-                            if d.get('best_identifier', {}) and d.get('best_identifier', {}).get('type') == 'cpuid')
-        very_good_count = sum(1 for d in device_results 
-                            if d.get('best_identifier', {}) and d.get('best_identifier', {}).get('type') == 'mac_address')
-        good_count = sum(1 for d in device_results 
-                       if d.get('best_identifier', {}) and d.get('best_identifier', {}).get('type') == 'udp_serial')
-        poor_count = sum(1 for d in device_results 
-                       if not d.get('best_identifier', {}) or not d.get('best_identifier', {}).get('reliable', True))
+        total_devices = len(devices)
+        devices_with_cpuid = sum(1 for d in devices if d.get('cpuid'))
+        devices_with_mac = sum(1 for d in devices if d.get('mac'))
+        devices_with_server = sum(1 for d in devices if d.get('server'))
         
         print()
         print("📊 IDENTIFICATION STATISTICS")
         print_separator("-", 50)
         print(f"Total devices: {total_devices}")
-        print(f"Excellent (CPU ID): {excellent_count} ({100*excellent_count//total_devices if total_devices > 0 else 0}%)")
-        print(f"Very Good (MAC ARP): {very_good_count} ({100*very_good_count//total_devices if total_devices > 0 else 0}%)")
-        print(f"Good (UDP Serial): {good_count} ({100*good_count//total_devices if total_devices > 0 else 0}%)")
-        print(f"Poor (IP fallback): {poor_count} ({100*poor_count//total_devices if total_devices > 0 else 0}%)")
+        print(f"With CPU ID: {devices_with_cpuid} ({100*devices_with_cpuid//total_devices if total_devices > 0 else 0}%)")
+        print(f"With MAC address: {devices_with_mac} ({100*devices_with_mac//total_devices if total_devices > 0 else 0}%)")
+        print(f"With cloud server: {devices_with_server} ({100*devices_with_server//total_devices if total_devices > 0 else 0}%)")
         print()
         
         # Ask for detailed view
         while True:
             try:
-                choice = input("Enter device number for detailed view (1-{}) or 'q' to quit: ".format(len(device_results)))
+                choice = input("Enter device number for detailed view (1-{}) or 'q' to quit: ".format(len(devices)))
                 if choice.lower() == 'q':
                     break
                     
                 device_num = int(choice)
-                if 1 <= device_num <= len(device_results):
-                    print_detailed_view(device_results[device_num - 1])
+                if 1 <= device_num <= len(devices):
+                    print_detailed_view(devices[device_num - 1])
                 else:
                     print("Invalid device number")
                     
@@ -333,45 +200,46 @@ async def test_specific_device(ip_address):
         getmac_available = test_getmac_functionality()
         print()
         
-        # Get UDP discovery info
-        print("📡 UDP Discovery...")
-        devices = await MaxSmartDiscovery.discover_maxsmart(ip=ip_address, enhance_with_hardware_ids=False)
+        # Get discovery info
+        print("📡 Discovery...")
+        devices = await MaxSmartDiscovery.discover_maxsmart(ip=ip_address)
         
-        udp_info = {}
-        if devices:
-            udp_info = devices[0]
-            print(f"   Name: {udp_info.get('name', 'Unknown')}")
-            print(f"   Firmware: {udp_info.get('ver', 'Unknown')}")
-            print(f"   UDP Serial: {repr(udp_info.get('sn', ''))}")
-        else:
-            print("   ❌ No UDP response")
+        if not devices:
+            print("   ❌ No response from device")
+            return
+            
+        device_info = devices[0]
+        print(f"   ✅ Device responded")
         print()
         
-        # Initialize device and test all identification methods
-        print("🔧 Testing identification methods...")
-        device = MaxSmartDevice(ip_address)
-        device.udp_serial = udp_info.get('sn', '')
-        await device.initialize_device()
-        
-        # Get all identifiers
-        all_identifiers = await device.get_all_identifiers()
-        best_identifier = await device.get_best_unique_identifier()
-        
-        # Create result for display
-        device_result = {
-            **udp_info,
-            'ip': ip_address,
-            'all_identifiers': all_identifiers,
-            'best_identifier': best_identifier
-        }
-        
         # Display detailed view
-        print_detailed_view(device_result)
+        print_detailed_view(device_info)
         
         # Show table view
         print_table_header()
-        print_device_row(device_result)
+        print_device_row(device_info)
         print_separator()
+        
+        # Test additional device methods
+        print("🔧 Testing device methods...")
+        device = MaxSmartDevice(ip_address)
+        await device.initialize_device()
+        
+        # Test hardware identifiers method
+        try:
+            hw_ids = await device.get_device_identifiers()
+            print(f"   Hardware IDs via device method:")
+            print(f"     CPU ID: {hw_ids.get('cpuid', 'Not available')}")
+            print(f"     Server: {hw_ids.get('server', 'Not available')}")
+        except Exception as e:
+            print(f"   ❌ Hardware ID method failed: {e}")
+            
+        # Test MAC via ARP method
+        try:
+            mac_arp = await device.get_mac_address_via_arp()
+            print(f"   MAC via ARP method: {mac_arp or 'Not found'}")
+        except Exception as e:
+            print(f"   ❌ ARP MAC method failed: {e}")
         
     except Exception as e:
         print(f"❌ Error: {type(e).__name__}: {e}")

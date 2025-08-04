@@ -1,12 +1,12 @@
 # MaxSmart Python Module
 
-[![PyPI version](https://img.shields.io/badge/PyPI-2.0.4-blue.svg)](https://pypi.org/project/maxsmart/)
+[![PyPI version](https://img.shields.io/badge/PyPI-2.0.5-blue.svg)](https://pypi.org/project/maxsmart/)
 [![Python versions](https://img.shields.io/badge/Python-3.7%2B-blue.svg)](https://pypi.org/project/maxsmart/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Version:** 2.0.4
+**Version:** 2.0.5
 
-A comprehensive Python library for controlling Revogi-based Max Hauri MaxSmart PowerStrips and Smart Plugs over local network. Features intelligent auto-detection, adaptive polling, real-time monitoring, and robust async architecture.
+A comprehensive Python library for controlling Revogi-based Max Hauri MaxSmart PowerStrips and Smart Plugs over local network. Features intelligent auto-detection, adaptive polling, real-time monitoring, and robust async architecture with simplified device identification.
 
 ## ☕ Support My Work
 
@@ -14,16 +14,13 @@ If this plugin helps you, consider supporting its development:
 
 [![Support me on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/nexusplugins)
 
-## 🎯 What's New in v2.0
+## 🎯 What's New in v2.0.5
 
-- **Full async/await architecture** - Modern Python async throughout
-- **Intelligent firmware detection** - Auto-detects and adapts to different firmware versions
-- **Advanced device identification** - CPU ID, MAC address, and serial-based device tracking
-- **Adaptive polling system** - Mimics official app behavior (5s normal, 2s burst)
-- **Real-time monitoring** - Live consumption and state change detection
-- **Enhanced error handling** - Robust retry logic with localized messages
-- **Session management** - Connection pooling and automatic cleanup
-- **Advanced statistics** - Hourly, daily, monthly data with visualization support
+- **Simplified device identification** - Streamlined discovery format with essential identifiers only
+- **Cleaner discovery results** - Removed duplicate fields and complex identification logic
+- **Essential data focus** - Returns only: sn, name, pname, ip, ver, cpuid, mac, server
+- **Improved performance** - Reduced payload size by ~50% with simplified structure
+- **Bug fixes** - Corrected command 124 field mapping (plcmac, plcdak, server)
 
 ## 🔧 Supported Hardware
 
@@ -92,7 +89,8 @@ async def main():
     await device.initialize_device()
     
     print(f"Connected to {device.name} (FW: {device.version})")
-    print(f"Data format: {device._watt_format}")
+    print(f"Serial: {devices[0]['sn']}")
+    print(f"CPU ID: {devices[0]['cpuid']}")
     
     # Control ports
     await device.turn_on(1)                    # Turn on port 1
@@ -113,7 +111,7 @@ asyncio.run(main())
 ```python
 from maxsmart import MaxSmartDiscovery
 
-# Discover all devices on local network
+# Discover all devices on local network (simplified format)
 discovery = MaxSmartDiscovery()
 devices = await discovery.discover_maxsmart()
 
@@ -122,20 +120,26 @@ for device in devices:
     print(f"IP: {device['ip']}")
     print(f"Serial: {device['sn']}")
     print(f"Firmware: {device['ver']}")
-    print(f"Ports: {device['pname']}")
+    print(f"CPU ID: {device['cpuid']}")
+    print(f"MAC: {device['mac']}")
+    print(f"Server: {device['server']}")
+    print(f"Ports: {len(device['pname'])} configured")
 ```
 
-### Enhanced Discovery with Hardware Identification
-```python
-# Enhanced discovery with CPU ID, MAC address detection
-devices = await MaxSmartDiscovery.discover_maxsmart(enhance_with_hardware_ids=True)
+### Essential Discovery Format
+The module now returns a clean, essential format:
 
-for device in devices:
-    print(f"Name: {device['name']} ({device['ip']})")
-    print(f"CPU ID: {device.get('cpuid', 'Not available')}")
-    print(f"MAC Address: {device.get('mac_address', 'Not available')}")
-    print(f"Unique ID: {device.get('unique_id', 'Not available')}")
-    print(f"ID Method: {device.get('identification_method', 'fallback')}")
+```python
+{
+    "sn": "SWP6023002003697",           # Serial number (primary identifier)
+    "name": "Living Room Strip",        # Device name
+    "pname": ["TV", "Lamp", ...],       # Port names (empty for newer firmware)
+    "ip": "192.168.1.100",              # IP address
+    "ver": "1.30",                      # Firmware version
+    "cpuid": "30FFD105424D373755530243", # CPU unique identifier
+    "mac": "AA:BB:CC:DD:EE:FF",         # MAC address via ARP
+    "server": "www.maxsmart.ch"         # Cloud server endpoint
+}
 ```
 
 ### Targeted Discovery
@@ -151,40 +155,28 @@ devices = await MaxSmartDiscovery.discover_maxsmart(
 )
 ```
 
-## 🆔 Advanced Device Identification
+## 🆔 Device Identification
 
-### Hardware Identifiers
+### Essential Identifiers
 ```python
 device = MaxSmartDevice('192.168.1.100')
 await device.initialize_device()
 
-# Get hardware identifiers
+# Get essential hardware identifiers
 hw_ids = await device.get_device_identifiers()
 print(f"CPU ID: {hw_ids.get('cpuid', 'Not available')}")
-print(f"Device MAC: {hw_ids.get('pclmac', 'Not available')}")
-print(f"Device Access Key: {hw_ids.get('pcldak', 'Not available')}")
+print(f"Cloud Server: {hw_ids.get('server', 'Not available')}")
 
 # Get MAC address via ARP
 mac_address = await device.get_mac_address_via_arp()
 print(f"ARP MAC: {mac_address}")
-
-# Get best unique identifier
-unique_id = await device.get_unique_identifier()
-print(f"Best unique ID: {unique_id}")
-
-# Get all available identifiers
-all_ids = await device.get_all_identifiers()
-for id_type, data in all_ids.items():
-    if data.get('available'):
-        print(f"{id_type}: {data['value']} (from {data['source']})")
 ```
 
-### Identification Priority
-The module uses this priority for device identification:
-1. **CPU ID** (most reliable) - Hardware-based unique identifier
-2. **MAC Address** (very reliable) - Network hardware identifier  
-3. **UDP Serial** (good) - Device serial from discovery
-4. **IP Address** (fallback) - Network address
+### Identification Strategy
+The module uses **serial number as primary identifier** with hardware identifiers for additional validation:
+- **Serial Number** (primary) - Device serial from UDP discovery
+- **CPU ID** (validation) - Hardware-based unique identifier
+- **MAC Address** (network) - Network hardware identifier via ARP
 
 ## 🎛️ Device Control
 
@@ -427,7 +419,7 @@ The `example_scripts/` directory contains comprehensive examples:
 
 ### Basic Examples
 - `test_discovery_async.py` - Device discovery with validation
-- `test_device_identification.py` - Advanced device identification testing
+- `test_device_identification.py` - Hardware identification testing
 - `get_port_names_async.py` - Port name retrieval and display
 - `retrieve_states_async.py` - Port state checking
 - `show_consumption.py` - Real-time power monitoring
@@ -465,8 +457,7 @@ devices = await MaxSmartDiscovery.discover_maxsmart(
     ip=None,                    # None for broadcast, IP for unicast
     user_locale="en",           # Locale for error messages
     timeout=3.0,                # Discovery timeout in seconds
-    max_attempts=3,             # Maximum discovery attempts
-    enhance_with_hardware_ids=True  # Enable hardware identification
+    max_attempts=3             # Maximum discovery attempts
 )
 ```
 

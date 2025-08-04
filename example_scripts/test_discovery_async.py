@@ -215,8 +215,8 @@ def export_results_to_csv(discovery_results: List[Dict[str, Any]], cmd124_result
                 'ip_address': device['ip'],
                 'version': device['ver'],
                 'discovery_cpuid': device.get('cpuid', ''),
-                'discovery_pclmac': device.get('pclmac', ''),
-                'discovery_pcldak': device.get('pcldak', ''),
+                'discovery_plcmac': device.get('plcmac', ''),
+                'discovery_plcdak': device.get('plcdak', ''),
                 'discovery_cloud_server': device.get('cloud_server', ''),
             }
             
