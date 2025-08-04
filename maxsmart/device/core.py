@@ -121,7 +121,7 @@ class MaxSmartDevice(
             self._session = aiohttp.ClientSession(
                 connector=connector,
                 timeout=timeout,
-                headers={'User-Agent': 'MaxSmart-Python/2.0.5'}
+                headers={'User-Agent': 'MaxSmart-Python/2.1.0'}
             )
             
             logging.debug(f"Created new HTTP session for device {self.ip} with force_close=True")

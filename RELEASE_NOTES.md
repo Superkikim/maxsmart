@@ -1,6 +1,6 @@
 # Release Notes
 
-## Version 2.0.5 (Latest)
+## Version 2.1.0 (Latest)
 
 ### BUG FIXES
 - Fixed keepalive forcing device to refuse requests
