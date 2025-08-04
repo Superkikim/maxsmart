@@ -15,10 +15,10 @@ class HardwareMixin:
         Returns:
             dict: Dictionary containing hardware identifiers
                   Format: {
-                      "pclmac": "XX:XX:XX:XX:XX:XX",     # PowerLAN MAC address
-                      "pcldak": "XXXXXXXXXXXXXXXX",      # Device Access Key
+                      "plcmac": "XX:XX:XX:XX:XX:XX",     # PowerLAN MAC address
+                      "plcdak": "XXXXXXXXXXXXXXXX",      # Device Access Key
                       "cpuid": "XXXXXXXXXXXXXXXX",       # CPU unique identifier
-                      "cloud_server": "server.domain"    # Cloud server address
+                      "server": "server.domain"    # Cloud server address
                   }
         
         Raises:
@@ -42,10 +42,10 @@ class HardwareMixin:
             
             # Expected fields from command 124
             identifiers = {
-                "pclmac": data.get("pclmac", ""),
-                "pcldak": data.get("pcldak", ""),
+                "plcmac": data.get("pclmac", ""),
+                "plcdak": data.get("pcldak", ""),
                 "cpuid": data.get("cpuid", ""), 
-                "cloud_server": data.get("cloud", "")
+                "cloud_server": data.get("server", "")
             }
             
             # Validate that we got at least some identifiers
@@ -247,14 +247,14 @@ class HardwareMixin:
         formatted = {}
         
         # Format MAC address
-        mac = identifiers.get("pclmac", "")
+        mac = identifiers.get("plcmac", "")
         if mac:
             formatted["MAC Address"] = mac.upper()
         else:
             formatted["MAC Address"] = "Not available"
             
         # Format DAK
-        dak = identifiers.get("pcldak", "")
+        dak = identifiers.get("plcdak", "")
         if dak:
             formatted["Device Access Key"] = dak
         else:
