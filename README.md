@@ -155,29 +155,6 @@ devices = await MaxSmartDiscovery.discover_maxsmart(
 )
 ```
 
-## 🆔 Device Identification
-
-### Essential Identifiers
-```python
-device = MaxSmartDevice('192.168.1.100')
-await device.initialize_device()
-
-# Get essential hardware identifiers
-hw_ids = await device.get_device_identifiers()
-print(f"CPU ID: {hw_ids.get('cpuid', 'Not available')}")
-print(f"Cloud Server: {hw_ids.get('server', 'Not available')}")
-
-# Get MAC address via ARP
-mac_address = await device.get_mac_address_via_arp()
-print(f"ARP MAC: {mac_address}")
-```
-
-### Identification Strategy
-The module uses **serial number as primary identifier** with hardware identifiers for additional validation:
-- **Serial Number** (primary) - Device serial from UDP discovery
-- **CPU ID** (validation) - Hardware-based unique identifier
-- **MAC Address** (network) - Network hardware identifier via ARP
-
 ## 🎛️ Device Control
 
 ### Basic Port Operations
