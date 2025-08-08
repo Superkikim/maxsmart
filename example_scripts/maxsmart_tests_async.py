@@ -119,20 +119,20 @@ async def confirm_proceed(device_info):
         return False
     return True
 
-async def select_port(port_mapping):
-    """Prompt the user to select a port (1 to 6) to test, displaying current port names."""
+async def select_port(port_mapping, port_count=6):
+    """Prompt the user to select a port to test, displaying current port names."""
     print("Available ports:")
-    for i in range(1, 7):
+    for i in range(1, port_count + 1):
         print(f"Port {i}: {port_mapping.get(f'Port {i}', f'Port {i}')}")
-    
+
     while True:
-        port = input("Select a port (1-6): ")
+        port = input(f"Select a port (1-{port_count}): ")
         try:
             port = int(port)
-            if 1 <= port <= 6:
+            if 1 <= port <= port_count:
                 return port
             else:
-                print("Invalid choice. Please select a port number between 1 and 6.")
+                print(f"Invalid choice. Please select a port number between 1 and {port_count}.")
         except ValueError:
             print("Invalid input. Please enter a number.")
 
@@ -477,6 +477,7 @@ async def main():
             # Pre-populate device info from discovery to avoid re-discovery
             selected_strip.version = selected_device.get("ver", None)
             selected_strip.name = selected_device.get("name", None)
+            selected_strip.port_count = selected_device.get("nr_of_ports", 6)  # Use detected port count
 
             await selected_strip.initialize_device()  # Initialize with pre-detected protocol
 
@@ -515,7 +516,7 @@ async def main():
                     
                     if choice == "1":
                         # Port control testing
-                        port = await select_port(port_mapping)  # Get the port number from the user
+                        port = await select_port(port_mapping, selected_strip.port_count)  # Get the port number from the user
                         
                         # First, check current state
                         print(f"\nChecking current state of port {port}...")

@@ -85,6 +85,7 @@ class MaxSmartDevice(
         self.sn = sn  # Can be provided for UDP V3 devices
         self.name = None
         self.version = None
+        self.port_count = 6  # Default, will be updated from discovery
         
         # Firmware-specific conversion factor (auto-detected after initialization)
         self._watt_multiplier = 1.0  # Default

@@ -298,8 +298,9 @@ class MaxSmartDiscovery:
                 logging.debug(f"MAC address not available for {ip}: {e}")
                 enhanced_device["mac"] = ""
 
-            # Detect protocol (HTTP vs UDP V3)
-            protocol = await MaxSmartDiscovery._detect_device_protocol_static(ip, enhanced_device.get("sn"))
+            # Detect protocol and port count (HTTP vs UDP V3)
+            protocol_result = await MaxSmartDiscovery._detect_device_protocol_static(ip, enhanced_device.get("sn"))
+            protocol, port_count = protocol_result
 
             # Skip devices that don't support any known protocol
             if protocol is None:
@@ -307,7 +308,8 @@ class MaxSmartDiscovery:
                 continue
 
             enhanced_device["protocol"] = protocol
-            logging.debug(f"Protocol detected for {ip}: {protocol}")
+            enhanced_device["nr_of_ports"] = port_count  # NOUVELLE CLÉ RÉTROCOMPATIBLE !
+            logging.debug(f"Protocol detected for {ip}: {protocol}, ports: {port_count}")
 
             # Try to get hardware IDs (only works for HTTP devices)
             try:
@@ -353,7 +355,7 @@ class MaxSmartDiscovery:
 
     @staticmethod
     async def _detect_device_protocol_static(ip, sn):
-        """Detect protocol for a device - tests HTTP first, then UDP V3."""
+        """Detect protocol for a device - tests HTTP first, then UDP V3. Returns (protocol, port_count)."""
         import aiohttp
         import socket
         import json
@@ -371,7 +373,10 @@ class MaxSmartDiscovery:
                         try:
                             json_data = json.loads(content)
                             if "data" in json_data:
-                                return "http"
+                                # Count ports from state array
+                                state_array = json_data.get("data", {}).get("state", [])
+                                port_count = len(state_array) if state_array else 6  # Default 6
+                                return ("http", port_count)
                         except json.JSONDecodeError:
                             pass
         except:
@@ -400,10 +405,13 @@ class MaxSmartDiscovery:
                     response.get("code") == 200 and
                     "data" in response and
                     "watt" in response.get("data", {})):
-                    return "udp_v3"
+                    # Count ports from state array
+                    state_array = response.get("data", {}).get("state", [])
+                    port_count = len(state_array) if state_array else 6  # Default 6
+                    return ("udp_v3", port_count)
             except:
                 pass
 
         # Device doesn't support any known protocol - skip it
         logging.warning(f"Device {ip} doesn't support HTTP or UDP V3 protocols - skipping")
-        return None
+        return (None, 0)
