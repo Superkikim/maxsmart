@@ -69,16 +69,17 @@ def print_device_summary(devices: List[Dict[str, Any]]):
         return
     
     print(f"✅ Discovered {len(devices)} device(s):")
-    print("-" * 95)
-    print(f"{'#':<3} {'Device Name':<20} {'Serial Number':<20} {'IP Address':<15} {'Version':<8} {'Protocol':<10}")
-    print("-" * 95)
+    print("-" * 115)
+    print(f"{'#':<3} {'Device Name':<20} {'Serial Number':<20} {'IP Address':<15} {'Version':<8} {'Protocol':<10} {'MAC Address':<18}")
+    print("-" * 115)
 
     for i, device in enumerate(devices, 1):
         # Detect protocol based on firmware for display
         protocol = "udp_v3" if device['ver'].startswith('5.') else "http"
-        print(f"{i:<3} {device['name']:<20} {device['sn']:<20} {device['ip']:<15} {device['ver']:<8} {protocol:<10}")
+        mac = device.get('mac', 'N/A')
+        print(f"{i:<3} {device['name']:<20} {device['sn']:<20} {device['ip']:<15} {device['ver']:<8} {protocol:<10} {mac:<18}")
 
-    print("-" * 95)
+    print("-" * 115)
     print()
 
 
@@ -119,6 +120,7 @@ async def test_device_capabilities(device: Dict[str, Any]) -> Optional[Dict[str,
                 'device_name': device['name'],
                 'device_ip': device['ip'],
                 'protocol': 'udp_v3',
+                'mac': device.get('mac', 'N/A'),
                 'test_result': f"get_data() returned {len(data.get('watt', []))} ports",
                 'success': len(data.get('watt', [])) > 0
             }
@@ -130,6 +132,7 @@ async def test_device_capabilities(device: Dict[str, Any]) -> Optional[Dict[str,
                 'device_name': device['name'],
                 'device_ip': device['ip'],
                 'protocol': 'http',
+                'mac': device.get('mac', 'N/A'),
                 'test_result': f"Hardware IDs: CPU={hw_ids.get('cpuid', 'N/A')[:8]}...",
                 'success': bool(hw_ids.get('cpuid'))
             }
@@ -178,24 +181,26 @@ def print_test_results(results: List[Dict[str, Any]]):
         return
 
     print(f"\n📊 Protocol Capability Test Results ({len(results)} successful):")
-    print("=" * 100)
+    print("=" * 120)
 
     # Header
-    header = f"{'Device Name':<15} {'IP Address':<15} {'Protocol':<10} {'Test Result':<40} {'Status':<10}"
+    header = f"{'Device Name':<15} {'IP Address':<15} {'Protocol':<10} {'MAC Address':<18} {'Test Result':<40} {'Status':<10}"
     print(header)
-    print("=" * 100)
+    print("=" * 120)
 
     # Data rows
     for result in results:
         status = "✅ PASS" if result['success'] else "❌ FAIL"
+        mac = result.get('mac', 'N/A')
         row = (f"{result['device_name']:<15} "
                f"{result['device_ip']:<15} "
                f"{result['protocol']:<10} "
+               f"{mac:<18} "
                f"{result['test_result']:<40} "
                f"{status:<10}")
         print(row)
 
-    print("=" * 100)
+    print("=" * 120)
     
     # Show any failed commands
     failed_devices = [r for r in results if not r['success']]
@@ -350,10 +355,22 @@ Examples:
         
         # Discover devices
         devices = await MaxSmartDiscovery.discover_maxsmart(
-            ip=args.ip_address, 
+            ip=args.ip_address,
             user_locale='en'
         )
-        
+
+        # Display raw discovery data
+        print("\n" + "="*80)
+        print("🔍 RAW DISCOVERY DATA:")
+        print("="*80)
+        import json
+        for i, device in enumerate(devices, 1):
+            print(f"\n📱 Device {i} RAW data:")
+            print(json.dumps(device, indent=2, default=str))
+        print("\n" + "="*80)
+        print("🏁 END RAW DISCOVERY DATA")
+        print("="*80 + "\n")
+
         # Print discovery results
         print_device_summary(devices)
         
