@@ -16,11 +16,12 @@ If this plugin helps you, consider supporting its development:
 
 ## 🎯 What's New in v2.1.0
 
-- **Simplified device identification** - Streamlined discovery format with essential identifiers only
-- **Cleaner discovery results** - Removed duplicate fields and complex identification logic
-- **Essential data focus** - Returns only: sn, name, pname, ip, ver, cpuid, mac, server
-- **Improved performance** - Reduced payload size by ~50% with simplified structure
-- **Bug fixes** - Corrected command 124 field mapping (plcmac, plcdak, server)
+- **🔄 Protocol Transparency** - Unified API works seamlessly with both HTTP and UDP V3 devices
+- **🤖 Automatic Protocol Detection** - No need to specify protocol, automatically detects HTTP or UDP V3
+- **📡 UDP V3 Support** - Full support for UDP-only devices (commands 20 and 90)
+- **🛡️ Robust Error Handling** - Same retry logic and timeout handling for both protocols
+- **🎯 Simplified Usage** - Same methods (`turn_on`, `turn_off`, `get_data`) work regardless of device protocol
+- **⚡ Enhanced Performance** - Optimized command routing and reduced overhead
 
 ## 🔧 Supported Hardware
 
@@ -103,6 +104,56 @@ async def main():
     await device.close()
 
 asyncio.run(main())
+```
+
+## 🔄 Protocol Transparency
+
+### Unified API for All Devices
+The module automatically detects and supports both **HTTP** and **UDP V3** protocols transparently:
+
+```python
+# Same code works for both HTTP and UDP V3 devices!
+device = MaxSmartDevice('192.168.1.100')  # Auto-detects protocol
+await device.initialize_device()
+
+# These methods work regardless of protocol:
+await device.turn_on(1)                    # ✅ HTTP or UDP V3
+await device.turn_off(3)                   # ✅ HTTP or UDP V3
+state = await device.check_state(1)        # ✅ HTTP or UDP V3
+power = await device.get_power_data(1)     # ✅ HTTP or UDP V3
+data = await device.get_data()             # ✅ HTTP or UDP V3
+
+print(f"Protocol: {device.protocol}")      # Shows 'http' or 'udp_v3'
+```
+
+### Firmware Support Matrix
+| Firmware Version | HTTP Support | UDP V3 Support | Auto-Detection Result | Recommended |
+|------------------|--------------|----------------|----------------------|-------------|
+| **1.30** | ✅ Full | ❌ None | `HTTP` | HTTP (only option) |
+| **2.11** | ✅ Full | ⚠️ Partial* | `HTTP` | HTTP (more features) |
+| **5.xx+** | ❌ None | ✅ Full | `UDP V3` | UDP V3 (only option) |
+
+*Firmware 2.11 supports UDP V3 commands (20, 90) but with limited data response
+
+### Protocol Support Matrix
+| Feature | HTTP Devices | UDP V3 Devices | Notes |
+|---------|--------------|----------------|-------|
+| Port Control | ✅ | ✅ | `turn_on()`, `turn_off()` |
+| State Checking | ✅ | ✅ | `check_state()`, `get_data()` |
+| Power Monitoring | ✅ | ✅ | `get_power_data()` |
+| Statistics | ✅ | ❌ | `get_statistics()` HTTP only |
+| Port Naming | ✅ | ❌ | `change_port_name()` HTTP only |
+| Device Time | ✅ | ❌ | `get_device_time()` HTTP only |
+| Hardware IDs | ✅ | ❌ | `get_device_identifiers()` HTTP only |
+
+### Manual Protocol Selection
+```python
+# Force specific protocol if needed
+device_http = MaxSmartDevice('192.168.1.100', protocol='http')
+device_udp = MaxSmartDevice('192.168.1.101', protocol='udp_v3')
+
+# Auto-detection (recommended)
+device_auto = MaxSmartDevice('192.168.1.102')  # protocol=None
 ```
 
 ## 🔍 Device Discovery

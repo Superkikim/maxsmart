@@ -9,6 +9,7 @@ from ..const import (
     CMD_GET_DEVICE_DATA,
     CMD_GET_DEVICE_IDS,
     DEVICE_ERROR_MESSAGES,
+    UDP_PORT,
 )
 from ..utils import get_user_locale, log_message
 from ..discovery import MaxSmartDiscovery
@@ -49,12 +50,15 @@ class MaxSmartDevice(
     DEFAULT_CONNECTOR_LIMIT_PER_HOST = 5
     SESSION_TIMEOUT = 30.0  # seconds
     
-    def __init__(self, ip_address, auto_polling=False):
+    def __init__(self, ip_address, protocol=None, auto_polling=False, user_locale=None):
         """
-        Initialize a MaxSmart device with robust session management.
-        
+        Initialize a MaxSmart device with robust session management and protocol support.
+
         Args:
             ip_address (str): IP address of the device
+            protocol (str, optional): Protocol to use ('http', 'udp_v3', or None for auto-detection)
+            auto_polling (bool): Whether to start adaptive polling automatically after initialization
+            user_locale (str, optional): User locale for error messages
             auto_polling (bool): Start polling automatically after initialization
         """
         # Validate IP address format
@@ -69,8 +73,9 @@ class MaxSmartDevice(
             )
             
         self.ip = ip_address
-        self.user_locale = get_user_locale()  # Get user's locale from utils
+        self.user_locale = user_locale or get_user_locale()  # Get user's locale from utils
         self._auto_polling = auto_polling
+        self.protocol = protocol  # None = auto-detect, 'http', or 'udp_v3'
 
         # Initialize default values
         self.strip_name = DEFAULT_STRIP_NAME
@@ -130,13 +135,13 @@ class MaxSmartDevice(
 
     async def initialize_device(self, start_polling=None):
         """
-        Initialize device for HTTP operations and retrieve device information.
-        
+        Initialize device with automatic protocol detection and retrieve device information.
+
         Args:
             start_polling (bool): Override auto_polling setting for this initialization
-        
+
         Raises:
-            MaxSmartConnectionError: If HTTP connectivity fails
+            MaxSmartConnectionError: If no supported protocol is found
         """
         if self._is_initialized:
             logging.debug(f"Device {self.ip} already initialized")
@@ -145,30 +150,23 @@ class MaxSmartDevice(
             if should_start_polling and not self.is_polling:
                 await self.start_adaptive_polling()
             return
-        
+
         try:
-            logging.debug(f"Initializing device {self.ip} via HTTP")
+            # Auto-detect protocol if not specified
+            if self.protocol is None:
+                self.protocol = await self._detect_protocol()
+                logging.debug(f"Auto-detected protocol for {self.ip}: {self.protocol}")
+
+            logging.debug(f"Initializing device {self.ip} via {self.protocol.upper()}")
             
-            # Test HTTP connectivity and get data for format detection
-            response = await self._send_command(CMD_GET_DEVICE_DATA)
-            data = response.get("data", {})
-
-            if not data:
-                raise MaxSmartConnectionError(
-                    user_locale=self.user_locale,
-                    error_key="ERROR_MISSING_EXPECTED_DATA",
-                    ip=self.ip,
-                    detail="No data received from device during initialization"
-                )
-
-            # Get device info via targeted UDP discovery
+            # Get device info via targeted UDP discovery (needed for both protocols)
             try:
                 from ..discovery import MaxSmartDiscovery
                 discovery_devices = await MaxSmartDiscovery.discover_maxsmart(ip=self.ip, enhance_with_hardware_ids=False)
                 if discovery_devices:
                     device_info = discovery_devices[0]
                     self.version = device_info.get("ver", None)
-                    self.name = device_info.get("name", None) 
+                    self.name = device_info.get("name", None)
                     self.sn = device_info.get("sn", None)
                 else:
                     self.version = None
@@ -179,6 +177,18 @@ class MaxSmartDevice(
                 self.version = None
                 self.name = None
                 self.sn = None
+
+            # Test connectivity and get data for format detection using detected protocol
+            response = await self._send_command(CMD_GET_DEVICE_DATA)
+            data = response.get("data", {})
+
+            if not data:
+                raise MaxSmartConnectionError(
+                    user_locale=self.user_locale,
+                    error_key="ERROR_MISSING_EXPECTED_DATA",
+                    ip=self.ip,
+                    detail=f"No data received from device during {self.protocol} initialization"
+                )
 
             # Auto-detect watt format based on data sample - FIXED LOGIC
             watt_values = data.get("watt", [])
@@ -409,9 +419,10 @@ class MaxSmartDevice(
         """String representation of the device."""
         init_status = "initialized" if self._is_initialized else "not initialized"
         polling_status = "polling" if self.is_polling else "not polling"
+        protocol_info = f"protocol={self.protocol}" if self.protocol else "protocol=unknown"
         return (
             f"MaxSmartDevice(ip={self.ip}, sn={self.sn}, name={self.name}, "
-            f"version={self.version}, {init_status}, {polling_status})"
+            f"version={self.version}, {protocol_info}, {init_status}, {polling_status})"
         )
 
     async def close(self):
@@ -443,3 +454,132 @@ class MaxSmartDevice(
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit with cleanup."""
         await self.close()
+
+    # Protocol Detection Methods
+    async def _detect_protocol(self):
+        """
+        Auto-detect which protocol the device supports.
+        Tests HTTP first (preferred), then UDP V3.
+
+        Returns:
+            str: 'http' or 'udp_v3'
+
+        Raises:
+            MaxSmartConnectionError: If no supported protocol is found
+        """
+        # Test HTTP protocol first (more features, preferred)
+        if await self._test_http_connectivity():
+            return 'http'
+
+        # Test UDP V3 protocol if HTTP fails
+        # For UDP V3, we need the serial number, so get it via discovery first
+        try:
+            from ..discovery import MaxSmartDiscovery
+            discovery_devices = await MaxSmartDiscovery.discover_maxsmart(ip=self.ip, enhance_with_hardware_ids=False)
+            if discovery_devices:
+                self.sn = discovery_devices[0].get("sn")
+                if self.sn and await self._test_udp_v3_connectivity():
+                    return 'udp_v3'
+        except Exception as e:
+            logging.debug(f"UDP V3 protocol test failed for {self.ip}: {e}")
+
+        # Neither protocol works
+        raise MaxSmartConnectionError(
+            user_locale=self.user_locale,
+            error_key="ERROR_NETWORK_ISSUE",
+            ip=self.ip,
+            detail="No supported protocol detected (HTTP or UDP V3)"
+        )
+
+    async def _test_http_connectivity(self):
+        """
+        Quick test if device responds to HTTP commands.
+
+        Returns:
+            bool: True if HTTP works, False otherwise
+        """
+        try:
+            # Quick HTTP test with cmd=511 (get device data)
+            url = f"http://{self.ip}/?cmd=511"
+            timeout = aiohttp.ClientTimeout(total=3.0)
+
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(url) as response:
+                    if response.status == 200:
+                        content = await response.text()
+                        # Basic validation - should be JSON with data
+                        try:
+                            import json
+                            json_data = json.loads(content)
+                            return "data" in json_data
+                        except json.JSONDecodeError:
+                            return False
+                    else:
+                        return False
+
+        except Exception as e:
+            logging.debug(f"HTTP protocol test failed for {self.ip}: {e}")
+            return False
+
+    async def _test_udp_v3_connectivity(self):
+        """
+        Quick test if device responds to UDP V3 commands.
+        Requires self.sn to be set.
+
+        Returns:
+            bool: True if UDP V3 works, False otherwise
+        """
+        if not self.sn:
+            return False
+
+        try:
+            import socket
+            import json
+            from ..const import UDP_PORT
+
+            # Quick UDP V3 test with cmd=90 (get device data)
+            payload = {"sn": self.sn, "cmd": 90}
+            message = f"V3{json.dumps(payload, separators=(',', ':'))}"
+
+            loop = asyncio.get_event_loop()
+            sock = None
+
+            try:
+                # Create UDP socket
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                sock.setblocking(False)
+
+                # Send UDP V3 message
+                await loop.run_in_executor(
+                    None, sock.sendto, message.encode('utf-8'), (self.ip, UDP_PORT)
+                )
+
+                # Set timeout and wait for response
+                sock.settimeout(2.0)
+
+                # Receive response
+                data, addr = await loop.run_in_executor(None, sock.recvfrom, 1024)
+
+                # Parse response
+                response_text = data.decode('utf-8', errors='replace')
+                response_json = json.loads(response_text)
+
+                # Check if valid UDP V3 response
+                return (response_json.get("response") == 90 and
+                        response_json.get("code") == 200 and
+                        "data" in response_json)
+
+            except Exception as e:
+                logging.debug(f"UDP V3 socket error for {self.ip}: {e}")
+                return False
+            finally:
+                if sock:
+                    try:
+                        sock.close()
+                    except:
+                        pass
+
+        except Exception as e:
+            logging.debug(f"UDP V3 protocol test failed for {self.ip}: {e}")
+            return False
