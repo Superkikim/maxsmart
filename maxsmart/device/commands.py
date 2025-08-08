@@ -61,9 +61,15 @@ class CommandMixin:
             )
 
         # Route to appropriate protocol
-        if hasattr(self, 'protocol') and self.protocol == 'udp_v3':
+        import logging
+        protocol = getattr(self, 'protocol', None)
+        logging.debug(f"_send_command routing: protocol={protocol}, cmd={cmd}, ip={self.ip}")
+
+        if protocol == 'udp_v3':
+            logging.debug(f"Routing to UDP V3 for {self.ip}")
             return await self._send_udp_v3_command(cmd, params, timeout, retries)
         else:
+            logging.debug(f"Routing to HTTP for {self.ip} (protocol={protocol})")
             return await self._send_http_command(cmd, params, timeout, retries)
 
     async def _send_http_command(self, cmd, params=None, timeout=None, retries=None):
