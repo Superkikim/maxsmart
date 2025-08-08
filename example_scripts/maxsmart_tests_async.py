@@ -581,26 +581,26 @@ async def main():
                             # Hourly data
                             print("Displaying last 24 hours wattage for each port")
                             hourly_data, hourly_date_info = await retrieve_hourly_data(selected_strip)
-                        if hourly_data and hourly_date_info:
-                            plot_chandelle_diagram(port_mapping, hourly_data, 'hourly', firmware_version)
-                        else:
-                            print("No hourly data available")
+                            if hourly_data and hourly_date_info:
+                                plot_chandelle_diagram(port_mapping, hourly_data, 'hourly', firmware_version)
+                            else:
+                                print("No hourly data available")
 
-                        # Daily data
-                        print("Displaying daily wattage for each port")
-                        daily_data, daily_date_info = await retrieve_daily_data(selected_strip)
-                        if daily_data and daily_date_info:
-                            plot_chandelle_diagram(port_mapping, daily_data, 'daily', firmware_version)
-                        else:
-                            print("No daily data available")
+                            # Daily data
+                            print("Displaying daily wattage for each port")
+                            daily_data, daily_date_info = await retrieve_daily_data(selected_strip)
+                            if daily_data and daily_date_info:
+                                plot_chandelle_diagram(port_mapping, daily_data, 'daily', firmware_version)
+                            else:
+                                print("No daily data available")
 
-                        # Monthly data
-                        print("Displaying monthly wattage for each port")
-                        monthly_data, monthly_date_info = await retrieve_monthly_data(selected_strip)
-                        if monthly_data and monthly_date_info:
-                            plot_chandelle_diagram(port_mapping, monthly_data, 'monthly', firmware_version)
-                        else:
-                            print("No monthly data available")
+                            # Monthly data
+                            print("Displaying monthly wattage for each port")
+                            monthly_data, monthly_date_info = await retrieve_monthly_data(selected_strip)
+                            if monthly_data and monthly_date_info:
+                                plot_chandelle_diagram(port_mapping, monthly_data, 'monthly', firmware_version)
+                            else:
+                                print("No monthly data available")
                         
                             input("\nPress Enter to continue...")  # Pause before returning to menu
 
