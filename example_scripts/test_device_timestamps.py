@@ -30,14 +30,17 @@ async def get_device_timestamp(device_info):
     device_ver = device_info.get("ver", "Unknown")
     protocol = device_info.get("protocol", "http")
     mac = device_info.get("mac", "Unknown")
+    port_count = device_info.get("nr_of_ports", 6)
 
     print(f"📱 Testing device: {device_name}")
     print(f"   IP: {device_ip}")
     print(f"   Protocol: {protocol}")
     print(f"   MAC: {mac}")
     print(f"   Serial: {device_sn}")
+    print(f"   Ports: {port_count}")
 
     device = MaxSmartDevice(device_ip, protocol=protocol, sn=device_sn)
+    device.port_count = port_count  # Set port count from discovery
     
     try:
         # Initialize device

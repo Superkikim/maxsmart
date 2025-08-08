@@ -373,9 +373,10 @@ class MaxSmartDiscovery:
                         try:
                             json_data = json.loads(content)
                             if "data" in json_data:
-                                # Count ports from state array
-                                state_array = json_data.get("data", {}).get("state", [])
-                                port_count = len(state_array) if state_array else 6  # Default 6
+                                # Count ports from switch array (not state!)
+                                data = json_data.get("data", {})
+                                switch_array = data.get("switch", [])
+                                port_count = len(switch_array) if switch_array else 6  # Default 6
                                 return ("http", port_count)
                         except json.JSONDecodeError:
                             pass
@@ -405,9 +406,10 @@ class MaxSmartDiscovery:
                     response.get("code") == 200 and
                     "data" in response and
                     "watt" in response.get("data", {})):
-                    # Count ports from state array
-                    state_array = response.get("data", {}).get("state", [])
-                    port_count = len(state_array) if state_array else 6  # Default 6
+                    # Count ports from switch array (not state!)
+                    data = response.get("data", {})
+                    switch_array = data.get("switch", [])
+                    port_count = len(switch_array) if switch_array else 6  # Default 6
                     return ("udp_v3", port_count)
             except:
                 pass

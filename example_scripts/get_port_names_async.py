@@ -56,14 +56,17 @@ async def main():
         ip = selected_device["ip"]
         protocol = selected_device.get("protocol", "http")
         serial = selected_device.get("sn", "")
+        port_count = selected_device.get("nr_of_ports", 6)
 
         print(f"\n📱 Selected device: {selected_device['name']}")
         print(f"   IP: {ip}")
         print(f"   Protocol: {protocol}")
         print(f"   MAC: {selected_device.get('mac', 'Unknown')}")
         print(f"   Serial: {serial}")
+        print(f"   Ports: {port_count}")
 
         device = MaxSmartDevice(ip, protocol=protocol, sn=serial)
+        device.port_count = port_count  # Set port count from discovery
 
         # Retrieve the current port names
         try:

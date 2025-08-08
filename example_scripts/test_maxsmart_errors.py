@@ -192,7 +192,9 @@ class ErrorTester:
             # Use protocol from discovery if available
             protocol = getattr(self, 'real_device_protocol', 'http')
             serial = getattr(self, 'real_device_serial', '')
+            port_count = getattr(self, 'real_device_port_count', 6)
             device = MaxSmartDevice(self.real_device_ip, protocol=protocol, sn=serial)
+            device.port_count = port_count  # Set port count if available
             await device.initialize_device()
             
             # Test 1: Invalid port number
@@ -257,7 +259,9 @@ class ErrorTester:
             # Use protocol from discovery if available
             protocol = getattr(self, 'real_device_protocol', 'http')
             serial = getattr(self, 'real_device_serial', '')
+            port_count = getattr(self, 'real_device_port_count', 6)
             device = MaxSmartDevice(self.real_device_ip, protocol=protocol, sn=serial)
+            device.port_count = port_count  # Set port count if available
             device.DEFAULT_TIMEOUT = 1.0  # Short timeout to force some failures
             await device.initialize_device()
             

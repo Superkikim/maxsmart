@@ -369,7 +369,7 @@ async def test_realtime_monitoring_targeted(device, results, target_port, port_n
     if target_port == 0:
         total_watts = sum(initial_watt)
         on_count = sum(initial_switch)
-        print(f"🔍 Initial state: {total_watts:.1f}W total, {on_count}/6 ports ON")
+        print(f"🔍 Initial state: {total_watts:.1f}W total, {on_count}/{device.port_count} ports ON")
     else:
         port_watts = initial_watt[target_port-1] if target_port <= len(initial_watt) else 0
         port_state = initial_switch[target_port-1] if target_port <= len(initial_switch) else 0
@@ -416,7 +416,7 @@ async def test_realtime_monitoring_targeted(device, results, target_port, port_n
             total_watts = sum(watt_values) if watt_values else 0
             on_count = sum(switch_values) if switch_values else 0
             print(f"📊 [{timestamp}] Measurement #{measurement_count:2d}/10 | "
-                  f"Total: {total_watts:.1f}W | Ports ON: {on_count}/6")
+                  f"Total: {total_watts:.1f}W | Ports ON: {on_count}/{device.port_count}")
         else:
             # Individual port
             port_watts = watt_values[target_port-1] if watt_values and target_port <= len(watt_values) else 0
@@ -540,14 +540,17 @@ async def main():
             # Create and initialize device with protocol and serial
             protocol = selected_device.get("protocol", "http")
             serial = selected_device.get("sn", "")
+            port_count = selected_device.get("nr_of_ports", 6)
 
             device = MaxSmartDevice(selected_device['ip'], protocol=protocol, sn=serial)
+            device.port_count = port_count  # Set port count from discovery
             await device.initialize_device()
 
             print(f"\n🔗 Connected to: {device.name} ({device.ip})")
             print(f"📋 Firmware: {device.version}")
             print(f"🔌 Protocol: {protocol}")
             print(f"🌐 MAC: {selected_device.get('mac', 'Unknown')}")
+            print(f"🔢 Ports: {port_count}")
             print(f"🆔 Serial: {device.sn}")
             
             # Test loop

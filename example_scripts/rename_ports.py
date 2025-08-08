@@ -121,14 +121,17 @@ async def main():
     # Create device with protocol and serial from discovery
     protocol = selected_device.get("protocol", "http")
     serial = selected_device.get("sn", "")
+    port_count = selected_device.get("nr_of_ports", 6)
 
     print(f"\n📱 Selected device: {selected_device['name']}")
     print(f"   IP: {selected_device['ip']}")
     print(f"   Protocol: {protocol}")
     print(f"   MAC: {selected_device.get('mac', 'Unknown')}")
     print(f"   Serial: {serial}")
+    print(f"   Ports: {port_count}")
 
     device = MaxSmartDevice(selected_device['ip'], protocol=protocol, sn=serial)
+    device.port_count = port_count  # Set port count from discovery
     await device.initialize_device()  # Ensure the device is initialized after instantiation
 
     # Debug: Check if version was properly set

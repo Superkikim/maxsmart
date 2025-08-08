@@ -224,7 +224,9 @@ async def test_specific_device(ip_address):
         print("🔧 Testing device methods...")
         protocol = device_info.get("protocol", "http")
         serial = device_info.get("sn", "")
+        port_count = device_info.get("nr_of_ports", 6)
         device = MaxSmartDevice(ip_address, protocol=protocol, sn=serial)
+        device.port_count = port_count  # Set port count from discovery
         await device.initialize_device()
         
         # Test hardware identifiers method

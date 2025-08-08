@@ -70,16 +70,17 @@ def print_device_summary(devices: List[Dict[str, Any]]):
     
     print(f"✅ Discovered {len(devices)} device(s):")
     print("-" * 115)
-    print(f"{'#':<3} {'Device Name':<20} {'Serial Number':<20} {'IP Address':<15} {'Version':<8} {'Protocol':<10} {'MAC Address':<18}")
-    print("-" * 115)
+    print(f"{'#':<3} {'Device Name':<20} {'Serial Number':<20} {'IP Address':<15} {'Version':<8} {'Protocol':<10} {'MAC Address':<18} {'Ports'}")
+    print("-" * 125)
 
     for i, device in enumerate(devices, 1):
-        # Use protocol from discovery
+        # Use protocol and port count from discovery
         protocol = device.get('protocol', 'unknown')
         mac = device.get('mac', 'N/A')
-        print(f"{i:<3} {device['name']:<20} {device['sn']:<20} {device['ip']:<15} {device['ver']:<8} {protocol:<10} {mac:<18}")
+        port_count = device.get('nr_of_ports', 6)
+        print(f"{i:<3} {device['name']:<20} {device['sn']:<20} {device['ip']:<15} {device['ver']:<8} {protocol:<10} {mac:<18} {port_count}P")
 
-    print("-" * 115)
+    print("-" * 125)
     print()
 
 

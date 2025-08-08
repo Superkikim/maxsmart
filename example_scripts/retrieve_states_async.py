@@ -29,15 +29,18 @@ async def retrieve_strip_states(strip_name):
             ip = specified_strip["ip"]
             protocol = specified_strip.get("protocol", "http")
             serial = specified_strip.get("sn", "")
+            port_count = specified_strip.get("nr_of_ports", 6)
 
             print(f"\n📱 Found strip: {specified_strip['name']}")
             print(f"   IP: {ip}")
             print(f"   Protocol: {protocol}")
             print(f"   MAC: {specified_strip.get('mac', 'Unknown')}")
             print(f"   Serial: {serial}")
+            print(f"   Ports: {port_count}")
 
             # Create MaxSmartDevice object for the specified strip
             specified_maxsmart = MaxSmartDevice(ip, protocol=protocol, sn=serial)
+            specified_maxsmart.port_count = port_count  # Set port count from discovery
 
             try:
                 await specified_maxsmart.initialize_device()
