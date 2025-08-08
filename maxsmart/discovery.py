@@ -300,6 +300,12 @@ class MaxSmartDiscovery:
 
             # Detect protocol (HTTP vs UDP V3)
             protocol = await MaxSmartDiscovery._detect_device_protocol_static(ip, enhanced_device.get("sn"))
+
+            # Skip devices that don't support any known protocol
+            if protocol is None:
+                logging.warning(f"Skipping device {ip} - no supported protocol detected")
+                continue
+
             enhanced_device["protocol"] = protocol
             logging.debug(f"Protocol detected for {ip}: {protocol}")
 
@@ -353,10 +359,10 @@ class MaxSmartDiscovery:
         import json
         from .const import UDP_PORT
 
-        # Test HTTP protocol (single attempt)
+        # Test HTTP protocol (single attempt) - Optimized timeout
         try:
             url = f"http://{ip}/?cmd=511"
-            timeout = aiohttp.ClientTimeout(total=2.0)
+            timeout = aiohttp.ClientTimeout(total=0.8)  # Optimized from 2.0s
 
             async with aiohttp.ClientSession(timeout=timeout) as session:
                 async with session.get(url) as response:
@@ -378,7 +384,7 @@ class MaxSmartDiscovery:
                 message = f"V3{json.dumps(payload, separators=(',', ':'))}"
 
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                sock.settimeout(2.0)
+                sock.settimeout(1.0)  # Optimized from 2.0s
                 sock.sendto(message.encode('utf-8'), (ip, UDP_PORT))
 
                 data, addr = sock.recvfrom(1024)
@@ -389,10 +395,15 @@ class MaxSmartDiscovery:
                 json_text = response_text[2:] if response_text.startswith("V3") else response_text
                 response = json.loads(json_text)
 
-                # Check for UDP V3 support (response 90 with code 200)
-                if (response.get("response") == 90 and response.get("code") == 200):
+                # Check for REAL UDP V3 support (must have operational data)
+                if (response.get("response") == 90 and
+                    response.get("code") == 200 and
+                    "data" in response and
+                    "watt" in response.get("data", {})):
                     return "udp_v3"
             except:
                 pass
 
-        return "unknown"
+        # Device doesn't support any known protocol - skip it
+        logging.warning(f"Device {ip} doesn't support HTTP or UDP V3 protocols - skipping")
+        return None

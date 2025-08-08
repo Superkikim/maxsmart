@@ -167,16 +167,22 @@ class MaxSmartDevice(
                     device_info = discovery_devices[0]
                     self.version = device_info.get("ver", None)
                     self.name = device_info.get("name", None)
-                    self.sn = device_info.get("sn", None)
+                    # Only update sn if not already provided in constructor (for UDP V3 devices)
+                    if not self.sn:
+                        self.sn = device_info.get("sn", None)
                 else:
                     self.version = None
                     self.name = None
-                    self.sn = None
+                    # Don't overwrite sn if provided in constructor
+                    if not self.sn:
+                        self.sn = None
             except Exception as e:
                 logging.debug(f"Could not get device info via discovery for {self.ip}: {e}")
                 self.version = None
                 self.name = None
-                self.sn = None
+                # Don't overwrite sn if provided in constructor
+                if not self.sn:
+                    self.sn = None
 
             # Test connectivity and get data for format detection using detected protocol
             response = await self._send_command(CMD_GET_DEVICE_DATA)
@@ -245,11 +251,12 @@ class MaxSmartDevice(
             raise
         except Exception as e:
             logging.error(f"Device initialization failed for {self.ip}: {e}")
+            protocol_name = self.protocol.upper() if self.protocol else "UNKNOWN"
             raise MaxSmartConnectionError(
                 user_locale=self.user_locale,
                 error_key="ERROR_NETWORK_ISSUE",
                 ip=self.ip,
-                detail=f"HTTP connection failed during initialization: {type(e).__name__}: {e}"
+                detail=f"{protocol_name} connection failed during initialization: {type(e).__name__}: {e}"
             )
 
     def _convert_watt(self, raw_watt):
