@@ -48,8 +48,11 @@ class StatisticsMixin:
             )  # Use default $ if not found
             watt_data = data["watt"]
 
-            # Extract date
-            date_str = data["date"]
+            # Extract date - handle None case for single-port devices
+            date_str = data.get("date")
+            if not date_str:
+                raise StateError("ERROR_MISSING_EXPECTED_DATA", self.user_locale,
+                               detail="No date information available for statistics")
             date_parts = date_str.split("-")
 
             if stat_type == 0:  # hourly
