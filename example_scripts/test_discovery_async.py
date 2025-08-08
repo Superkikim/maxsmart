@@ -69,14 +69,16 @@ def print_device_summary(devices: List[Dict[str, Any]]):
         return
     
     print(f"✅ Discovered {len(devices)} device(s):")
-    print("-" * 80)
-    print(f"{'#':<3} {'Device Name':<20} {'Serial Number':<20} {'IP Address':<15} {'Version':<8}")
-    print("-" * 80)
-    
+    print("-" * 95)
+    print(f"{'#':<3} {'Device Name':<20} {'Serial Number':<20} {'IP Address':<15} {'Version':<8} {'Protocol':<10}")
+    print("-" * 95)
+
     for i, device in enumerate(devices, 1):
-        print(f"{i:<3} {device['name']:<20} {device['sn']:<20} {device['ip']:<15} {device['ver']:<8}")
-    
-    print("-" * 80)
+        # Detect protocol based on firmware for display
+        protocol = "udp_v3" if device['ver'].startswith('5.') else "http"
+        print(f"{i:<3} {device['name']:<20} {device['sn']:<20} {device['ip']:<15} {device['ver']:<8} {protocol:<10}")
+
+    print("-" * 95)
     print()
 
 
@@ -154,7 +156,7 @@ async def process_devices(devices: List[Dict[str, Any]]) -> List[Dict[str, Any]]
     if not devices:
         return []
     
-    print(f"🔄 Testing capabilities on {len(devices)} device(s)...\n")
+    print(f"🔄 Testing protocol-specific capabilities on {len(devices)} device(s)...\n")
 
     # Test device capabilities concurrently
     tasks = [test_device_capabilities(device) for device in devices]
@@ -169,36 +171,31 @@ async def process_devices(devices: List[Dict[str, Any]]) -> List[Dict[str, Any]]
     return successful_results
 
 
-def print_command_results(results: List[Dict[str, Any]]):
-    """Print the results of command 124 execution in a formatted table."""
+def print_test_results(results: List[Dict[str, Any]]):
+    """Print the results of protocol-specific capability tests."""
     if not results:
-        print("❌ No successful command executions.")
+        print("❌ No successful capability tests.")
         return
-    
-    print(f"\n📊 Command 124 Results ({len(results)} successful):")
-    print("=" * 120)
-    
+
+    print(f"\n📊 Protocol Capability Test Results ({len(results)} successful):")
+    print("=" * 100)
+
     # Header
-    header = f"{'Device Name':<15} {'Serial Number':<20} {'IP Address':<15} {'CPU ID':<25} {'PLC MAC':<15} {'PLC DAK':<20} {'Server':<15}"
+    header = f"{'Device Name':<15} {'IP Address':<15} {'Protocol':<10} {'Test Result':<40} {'Status':<10}"
     print(header)
-    print("=" * 120)
-    
+    print("=" * 100)
+
     # Data rows
     for result in results:
-        if not result['success']:
-            continue
-            
-        data = result['command_response']['data']
+        status = "✅ PASS" if result['success'] else "❌ FAIL"
         row = (f"{result['device_name']:<15} "
-               f"{result['device_sn']:<20} "
                f"{result['device_ip']:<15} "
-               f"{data['cpuid']:<25} "
-               f"{data['plcmac']:<15} "
-               f"{data['plcdak']:<20} "
-               f"{data['server']:<15}")
+               f"{result['protocol']:<10} "
+               f"{result['test_result']:<40} "
+               f"{status:<10}")
         print(row)
-    
-    print("=" * 120)
+
+    print("=" * 100)
     
     # Show any failed commands
     failed_devices = [r for r in results if not r['success']]
@@ -367,8 +364,8 @@ Examples:
         # Process devices with command 124
         command_results = await process_devices(devices)
         
-        # Print command results
-        print_command_results(command_results)
+        # Print test results
+        print_test_results(command_results)
         
         # Show detailed JSON if requested
         if args.show_json:
@@ -380,7 +377,7 @@ Examples:
         
         # Final summary
         print(f"\n✨ Discovery complete! Found {len(devices)} device(s), "
-              f"executed command 124 on {len(command_results)} device(s).")
+              f"tested capabilities on {len(command_results)} device(s).")
         
         return 0
         
