@@ -37,6 +37,19 @@ class CommandMixin:
         :raises CommandError: For command validation or execution errors
         :raises MaxSmartConnectionError: For network/connectivity issues
         """
+        # Check if command requires specific firmware version
+        from ..const import IN_DEVICE_NAME_VERSION
+        statistics_commands = [201, 124, 510]  # Commands that require specific firmware
+
+        if cmd in statistics_commands:
+            if not self.version or self.version != IN_DEVICE_NAME_VERSION:
+                from ..exceptions import StateError
+                raise StateError(
+                    "ERROR_FEATURE_NOT_AVAILABLE",
+                    self.user_locale,
+                    detail=f"Statistics commands require firmware v{IN_DEVICE_NAME_VERSION}. Current version: {self.version or 'Unknown'}"
+                )
+
         # Use default values if not specified
         if timeout is None:
             timeout = self.DEFAULT_TIMEOUT
