@@ -255,7 +255,8 @@ async def retrieve_consumption_data(selected_strip):
     consumption_data = []
     try:
         port_mapping = await selected_strip.retrieve_port_names()  # Make this call async
-        for port in range(1, 7):
+        # Use actual port count instead of hardcoded 6
+        for port in range(1, selected_strip.port_count + 1):
             power_data = await selected_strip.get_power_data(port)  # Make this call async
             watt_value = float(power_data["watt"])  # Ensure watt value is a float
             consumption_data.append([port_mapping[f"Port {port}"], watt_value])  # Append real port names and wattage
@@ -503,15 +504,24 @@ async def main():
                     print("2. Master Port Control (Turn all ON/OFF) - ✅ HTTP & UDP V3")
                     print("3. Real-time Consumption Data - ✅ HTTP & UDP V3")
 
-                    if selected_strip.protocol == 'http':
-                        print("4. Statistics and Graphs (Hourly/Daily/Monthly) - ✅ HTTP only")
-                        print("5. Raw Statistics Data - ✅ HTTP only")
+                    # Statistics only available for firmware 1.30 (IN_DEVICE_NAME_VERSION)
+                    from maxsmart.const import IN_DEVICE_NAME_VERSION
+                    stats_available = (selected_strip.protocol == 'http' and
+                                     selected_strip.version == IN_DEVICE_NAME_VERSION)
+
+                    if stats_available:
+                        print("4. Statistics and Graphs (Hourly/Daily/Monthly) - ✅ HTTP v1.30 only")
+                        print("5. Raw Statistics Data - ✅ HTTP v1.30 only")
                     else:
-                        print("4. Statistics and Graphs - ❌ Not available on UDP V3")
-                        print("5. Raw Statistics Data - ❌ Not available on UDP V3")
+                        if selected_strip.protocol == 'http':
+                            print(f"4. Statistics and Graphs - ❌ Requires firmware v{IN_DEVICE_NAME_VERSION} (current: {selected_strip.version})")
+                            print(f"5. Raw Statistics Data - ❌ Requires firmware v{IN_DEVICE_NAME_VERSION} (current: {selected_strip.version})")
+                        else:
+                            print("4. Statistics and Graphs - ❌ Not available on UDP V3")
+                            print("5. Raw Statistics Data - ❌ Not available on UDP V3")
 
                     print("6. Exit")
-                    
+
                     choice = input("Select an option (1-6): ")
                     
                     if choice == "1":
@@ -563,13 +573,21 @@ async def main():
                         input("\nPress Enter to continue...")  # Pause before returning to menu
                     
                     elif choice == "4":
-                        # Statistics and graphs (HTTP only)
-                        if selected_strip.protocol != 'http':
-                            print("❌ Statistics are only available on HTTP devices")
-                            print("   Your device uses UDP V3 protocol which supports:")
-                            print("   ✅ Port control (turn_on, turn_off)")
-                            print("   ✅ State checking (check_state)")
-                            print("   ✅ Real-time consumption (get_power_data)")
+                        # Statistics and graphs (HTTP v1.30 only)
+                        if not stats_available:
+                            if selected_strip.protocol != 'http':
+                                print("❌ Statistics are only available on HTTP devices with firmware v1.30")
+                                print("   Your device uses UDP V3 protocol which supports:")
+                                print("   ✅ Port control (turn_on, turn_off)")
+                                print("   ✅ State checking (check_state)")
+                                print("   ✅ Real-time consumption (get_power_data)")
+                            else:
+                                print(f"❌ Statistics require firmware v{IN_DEVICE_NAME_VERSION}")
+                                print(f"   Your device has firmware v{selected_strip.version}")
+                                print("   Available features:")
+                                print("   ✅ Port control (turn_on, turn_off)")
+                                print("   ✅ State checking (check_state)")
+                                print("   ✅ Real-time consumption (get_power_data)")
                             input("\nPress Enter to continue...")
                             continue
 
@@ -602,10 +620,15 @@ async def main():
                         input("\nPress Enter to continue...")  # Pause before returning to menu
                     
                     elif choice == "5":
-                        # Raw statistics data (HTTP only)
-                        if selected_strip.protocol != 'http':
-                            print("❌ Raw statistics are only available on HTTP devices")
-                            print("   UDP V3 devices support real-time data only (option 3)")
+                        # Raw statistics data (HTTP v1.30 only)
+                        if not stats_available:
+                            if selected_strip.protocol != 'http':
+                                print("❌ Raw statistics are only available on HTTP devices with firmware v1.30")
+                                print("   UDP V3 devices support real-time data only (option 3)")
+                            else:
+                                print(f"❌ Raw statistics require firmware v{IN_DEVICE_NAME_VERSION}")
+                                print(f"   Your device has firmware v{selected_strip.version}")
+                                print("   Use option 3 for real-time consumption data")
                             input("\nPress Enter to continue...")
                             continue
 
