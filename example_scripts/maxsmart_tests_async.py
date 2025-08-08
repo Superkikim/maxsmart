@@ -31,6 +31,19 @@ async def discover_devices():
     try:
         discovery = MaxSmartDiscovery()
         devices = await discovery.discover_maxsmart()  # Make this call async
+
+        # Display raw discovery data
+        print("\n" + "="*80)
+        print("🔍 RAW DISCOVERY DATA:")
+        print("="*80)
+        import json
+        for i, device in enumerate(devices, 1):
+            print(f"\n📱 Device {i} RAW data:")
+            print(json.dumps(device, indent=2, default=str))
+        print("\n" + "="*80)
+        print("🏁 END RAW DISCOVERY DATA")
+        print("="*80 + "\n")
+
         return devices
     except ConnectionError as ce:
         print(f"Connection error occurred during discovery: {ce}")
@@ -89,23 +102,25 @@ async def detect_device_protocol(ip, sn):
             json_text = response_text[2:] if response_text.startswith("V3") else response_text
             response = json.loads(json_text)
 
-            # Check for REAL UDP V3 support (must have data field with watt, amp, switch)
-            if (response.get("response") == 90 and
-                response.get("code") == 200 and
-                "data" in response and
-                "watt" in response["data"] and
-                "switch" in response["data"]):
-                udp_works = True
+            # Check for UDP V3 support (response 90 with code 200)
+            if (response.get("response") == 90 and response.get("code") == 200):
+                # Check if it has full data (newer firmware) or just basic response
+                if ("data" in response and
+                    "watt" in response["data"] and
+                    "switch" in response["data"]):
+                    udp_works = "UDP_V3_FULL"  # Full UDP V3 with data
+                else:
+                    udp_works = "UDP_V3_BASIC"  # Basic UDP V3 response
         except:
             pass
 
     # Return protocol support
     if http_works and udp_works:
-        return "HTTP+UDP"  # Dual protocol support!
+        return f"HTTP+{udp_works}"  # Dual protocol support!
     elif http_works:
         return "HTTP"
     elif udp_works:
-        return "UDP V3"
+        return udp_works  # Return the specific UDP V3 type
     else:
         return "Unknown"
 
@@ -536,9 +551,9 @@ async def main():
             protocol_param = None
             if detected_protocol == "HTTP":
                 protocol_param = "http"
-            elif detected_protocol == "UDP V3":
+            elif detected_protocol in ["UDP V3", "UDP_V3_FULL", "UDP_V3_BASIC"]:
                 protocol_param = "udp_v3"
-            elif detected_protocol == "HTTP+UDP":
+            elif detected_protocol.startswith("HTTP+UDP"):
                 protocol_param = "http"  # Prefer HTTP for dual protocol devices
             else:
                 # Unknown protocol - try UDP V3 first for firmware 5.xx+

@@ -13,23 +13,75 @@ def get_user_locale():
 
 def get_mac_address_from_ip(ip_address):
     """
-    Get MAC address for an IP address.
-    
+    Get MAC address for an IP address using multiple methods.
+
     Args:
         ip_address (str): IP address to look up
-        
+
     Returns:
         str or None: MAC address or None if not found
     """
+    import logging
+
+    # Method 1: Try getmac library
     try:
         from getmac import get_mac_address
-        return get_mac_address(ip=ip_address)
+        mac = get_mac_address(ip=ip_address)
+        if mac:
+            logging.debug(f"MAC via getmac for {ip_address}: {mac}")
+            return mac
     except ImportError:
         logging.debug("getmac library not available - install with: pip install getmac")
-        return None
     except Exception as e:
-        logging.debug(f"Failed to get MAC for {ip_address}: {e}")
-        return None
+        logging.debug(f"getmac failed for {ip_address}: {e}")
+
+    # Method 2: Try ARP table lookup
+    try:
+        import subprocess
+        import re
+
+        # Try arp command
+        result = subprocess.run(['arp', '-n', ip_address],
+                              capture_output=True, text=True, timeout=5)
+
+        if result.returncode == 0:
+            # Parse ARP output for MAC address
+            mac_pattern = r'([0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}'
+            match = re.search(mac_pattern, result.stdout)
+            if match:
+                mac = match.group(0)
+                logging.debug(f"MAC via ARP for {ip_address}: {mac}")
+                return mac
+
+    except Exception as e:
+        logging.debug(f"ARP lookup failed for {ip_address}: {e}")
+
+    # Method 3: Try ping + ARP (force ARP entry)
+    try:
+        import subprocess
+        import re
+
+        # Ping to populate ARP table
+        subprocess.run(['ping', '-c', '1', '-W', '1000', ip_address],
+                      capture_output=True, timeout=3)
+
+        # Try ARP again
+        result = subprocess.run(['arp', '-n', ip_address],
+                              capture_output=True, text=True, timeout=5)
+
+        if result.returncode == 0:
+            mac_pattern = r'([0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}'
+            match = re.search(mac_pattern, result.stdout)
+            if match:
+                mac = match.group(0)
+                logging.debug(f"MAC via ping+ARP for {ip_address}: {mac}")
+                return mac
+
+    except Exception as e:
+        logging.debug(f"Ping+ARP failed for {ip_address}: {e}")
+
+    logging.debug(f"All MAC lookup methods failed for {ip_address}")
+    return None
 
 
 def get_user_message(message_dict, error_key, user_locale, default_message="Unknown error.", **kwargs):
