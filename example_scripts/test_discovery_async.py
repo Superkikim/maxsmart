@@ -106,8 +106,9 @@ async def test_device_capabilities(device: Dict[str, Any]) -> Optional[Dict[str,
 
         logger.info(f"📡 Testing {test_name} on {device['name']} ({device['ip']}) - Protocol: {protocol}")
 
-        # Create device with protocol from discovery
-        test_device = MaxSmartDevice(device['ip'], protocol=protocol)
+        # Create device with protocol and serial from discovery
+        serial = device.get('sn', '')
+        test_device = MaxSmartDevice(device['ip'], protocol=protocol, sn=serial)
         await test_device.initialize_device()
 
         # Test appropriate capability based on protocol

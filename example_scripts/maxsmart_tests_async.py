@@ -469,9 +469,10 @@ async def main():
             if not await confirm_proceed(selected_device):
                 return
             
-            # Create device with protocol from discovery
+            # Create device with protocol and serial from discovery
             protocol = selected_device.get("protocol", "http")
-            selected_strip = MaxSmartDevice(selected_device["ip"], protocol=protocol)
+            serial = selected_device.get("sn", "")
+            selected_strip = MaxSmartDevice(selected_device["ip"], protocol=protocol, sn=serial)
             await selected_strip.initialize_device()  # Initialize with pre-detected protocol
 
             # Display protocol and device information

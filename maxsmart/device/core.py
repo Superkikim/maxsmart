@@ -50,16 +50,16 @@ class MaxSmartDevice(
     DEFAULT_CONNECTOR_LIMIT_PER_HOST = 5
     SESSION_TIMEOUT = 30.0  # seconds
     
-    def __init__(self, ip_address, protocol=None, auto_polling=False, user_locale=None):
+    def __init__(self, ip_address, protocol=None, sn=None, auto_polling=False, user_locale=None):
         """
         Initialize a MaxSmart device with robust session management and protocol support.
 
         Args:
             ip_address (str): IP address of the device
             protocol (str, optional): Protocol to use ('http', 'udp_v3', or None for auto-detection)
+            sn (str, optional): Serial number for UDP V3 devices
             auto_polling (bool): Whether to start adaptive polling automatically after initialization
             user_locale (str, optional): User locale for error messages
-            auto_polling (bool): Start polling automatically after initialization
         """
         # Validate IP address format
         import socket
@@ -82,7 +82,7 @@ class MaxSmartDevice(
         self.port_names = DEFAULT_PORT_NAMES
 
         # Store device information
-        self.sn = None
+        self.sn = sn  # Can be provided for UDP V3 devices
         self.name = None
         self.version = None
         
