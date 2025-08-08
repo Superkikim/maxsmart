@@ -28,8 +28,16 @@ async def get_device_timestamp(device_info):
     device_name = device_info["name"]
     device_sn = device_info["sn"]
     device_ver = device_info.get("ver", "Unknown")
-    
-    device = MaxSmartDevice(device_ip)
+    protocol = device_info.get("protocol", "http")
+    mac = device_info.get("mac", "Unknown")
+
+    print(f"📱 Testing device: {device_name}")
+    print(f"   IP: {device_ip}")
+    print(f"   Protocol: {protocol}")
+    print(f"   MAC: {mac}")
+    print(f"   Serial: {device_sn}")
+
+    device = MaxSmartDevice(device_ip, protocol=protocol, sn=device_sn)
     
     try:
         # Initialize device

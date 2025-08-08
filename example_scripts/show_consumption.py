@@ -29,7 +29,9 @@ def select_device(devices):
     print("\nAvailable MaxSmart devices:")
     for i, device in enumerate(devices, start=1):
         fw_info = f" (FW: {device.get('ver', 'Unknown')})" if device.get('ver') else ""
-        print(f"{i}. {device['name']} - {device['ip']}{fw_info}")
+        protocol = device.get('protocol', 'unknown')
+        mac = device.get('mac', 'N/A')[:17]  # Truncate MAC for display
+        print(f"{i}. {device['name']} - {device['ip']}{fw_info} - {protocol} - {mac}")
     print("  R. Rescan network")
     print("  0. Exit")
 
@@ -242,9 +244,16 @@ async def main_loop():
                     print(f"✅ Found {len(devices)} device(s) after rescan")
                 continue
 
-            # Create and initialize device
-            print(f"\nConnecting to {selected_device['name']} ({selected_device['ip']})...")
-            device = MaxSmartDevice(selected_device['ip'])
+            # Create and initialize device with protocol and serial
+            protocol = selected_device.get("protocol", "http")
+            serial = selected_device.get("sn", "")
+
+            print(f"\n📱 Connecting to {selected_device['name']} ({selected_device['ip']})...")
+            print(f"   Protocol: {protocol}")
+            print(f"   MAC: {selected_device.get('mac', 'Unknown')}")
+            print(f"   Serial: {serial}")
+
+            device = MaxSmartDevice(selected_device['ip'], protocol=protocol, sn=serial)
             await device.initialize_device()
             
             # Enter device-specific operations loop

@@ -537,12 +537,17 @@ async def main():
             if not selected_device:
                 break
                 
-            # Create and initialize device
-            device = MaxSmartDevice(selected_device['ip'])
+            # Create and initialize device with protocol and serial
+            protocol = selected_device.get("protocol", "http")
+            serial = selected_device.get("sn", "")
+
+            device = MaxSmartDevice(selected_device['ip'], protocol=protocol, sn=serial)
             await device.initialize_device()
-            
+
             print(f"\n🔗 Connected to: {device.name} ({device.ip})")
             print(f"📋 Firmware: {device.version}")
+            print(f"🔌 Protocol: {protocol}")
+            print(f"🌐 MAC: {selected_device.get('mac', 'Unknown')}")
             print(f"🆔 Serial: {device.sn}")
             
             # Test loop

@@ -469,10 +469,15 @@ async def main():
             if not await confirm_proceed(selected_device):
                 return
             
-            # Create device with protocol and serial from discovery
+            # Create device with all info from discovery
             protocol = selected_device.get("protocol", "http")
             serial = selected_device.get("sn", "")
             selected_strip = MaxSmartDevice(selected_device["ip"], protocol=protocol, sn=serial)
+
+            # Pre-populate device info from discovery to avoid re-discovery
+            selected_strip.version = selected_device.get("ver", None)
+            selected_strip.name = selected_device.get("name", None)
+
             await selected_strip.initialize_device()  # Initialize with pre-detected protocol
 
             # Display protocol and device information
@@ -480,6 +485,7 @@ async def main():
             print(f"   Protocol: {selected_strip.protocol.upper()}")
             print(f"   Firmware: {selected_strip.version or 'Unknown'}")
             print(f"   IP: {selected_device['ip']}")
+            print(f"   MAC: {selected_device.get('mac', 'Unknown')}")
             print(f"   Serial: {selected_strip.sn or 'Unknown'}")
 
             port_mapping = await selected_strip.retrieve_port_names()  # Retrieve current port names

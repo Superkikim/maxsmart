@@ -25,29 +25,37 @@ async def retrieve_strip_states(strip_name):
                 break
 
         if specified_strip:
+            # Create device with protocol and serial from discovery
             ip = specified_strip["ip"]
-            print(f"IP address of specified strip: {ip}")
+            protocol = specified_strip.get("protocol", "http")
+            serial = specified_strip.get("sn", "")
+
+            print(f"\n📱 Found strip: {specified_strip['name']}")
+            print(f"   IP: {ip}")
+            print(f"   Protocol: {protocol}")
+            print(f"   MAC: {specified_strip.get('mac', 'Unknown')}")
+            print(f"   Serial: {serial}")
 
             # Create MaxSmartDevice object for the specified strip
-            specified_maxsmart = MaxSmartDevice(ip)
+            specified_maxsmart = MaxSmartDevice(ip, protocol=protocol, sn=serial)
 
             try:
+                await specified_maxsmart.initialize_device()
+
                 # Retrieve the state of all ports in a single call
-                print("Retrieving port state...")
+                print("\n🔌 Retrieving port state...")
                 port_state = await specified_maxsmart.check_state(port=3)  # Use check_ports_state instead
-                print(f"Port state: {port_state}")
+                print(f"Port 3 state: {port_state}")
 
                 # Retrieve the state of the strip itself (assumes you have a method like check_state())
-                print("Retrieving strip state...")
+                print("🔌 Retrieving strip state...")
                 strip_state = await specified_maxsmart.check_state()  # Update to call the correct method
                 print(f"Strip state: {strip_state}")
 
             except ClientError as ce:
-                print(f"HTTP error occurred: {ce}")  # Handle HTTP-related errors
+                print(f"❌ HTTP error occurred: {ce}")  # Handle HTTP-related errors
             except Exception as e:
-                print(f"An error occurred while retrieving states: {e}")
-            finally:
-                await specified_maxsmart.close()  # Close the connection when done
+                print(f"❌ An error occurred while retrieving states: {e}")
         else:
             print(f"{strip_name} strip not found.")
     else:

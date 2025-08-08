@@ -222,7 +222,9 @@ async def test_specific_device(ip_address):
         
         # Test additional device methods
         print("🔧 Testing device methods...")
-        device = MaxSmartDevice(ip_address)
+        protocol = device_info.get("protocol", "http")
+        serial = device_info.get("sn", "")
+        device = MaxSmartDevice(ip_address, protocol=protocol, sn=serial)
         await device.initialize_device()
         
         # Test hardware identifiers method

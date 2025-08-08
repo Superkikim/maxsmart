@@ -189,7 +189,10 @@ class ErrorTester:
         
         device = None
         try:
-            device = MaxSmartDevice(self.real_device_ip)
+            # Use protocol from discovery if available
+            protocol = getattr(self, 'real_device_protocol', 'http')
+            serial = getattr(self, 'real_device_serial', '')
+            device = MaxSmartDevice(self.real_device_ip, protocol=protocol, sn=serial)
             await device.initialize_device()
             
             # Test 1: Invalid port number
@@ -251,7 +254,10 @@ class ErrorTester:
         
         device = None
         try:
-            device = MaxSmartDevice(self.real_device_ip)
+            # Use protocol from discovery if available
+            protocol = getattr(self, 'real_device_protocol', 'http')
+            serial = getattr(self, 'real_device_serial', '')
+            device = MaxSmartDevice(self.real_device_ip, protocol=protocol, sn=serial)
             device.DEFAULT_TIMEOUT = 1.0  # Short timeout to force some failures
             await device.initialize_device()
             

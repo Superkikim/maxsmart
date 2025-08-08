@@ -26,7 +26,9 @@ async def select_device(devices):
     """Prompt the user to select a device from the discovered devices."""
     print("Available MaxSmart devices:")
     for i, device in enumerate(devices, start=1):
-        print(f"{i}. IP: {device['ip']}, Name: {device['name']}")  # List device IP and name
+        protocol = device.get('protocol', 'unknown')
+        mac = device.get('mac', 'N/A')
+        print(f"{i}. IP: {device['ip']}, Name: {device['name']}, Protocol: {protocol}, MAC: {mac}")  # List device details
     choice = input("Select a device by number: ")
     try:
         choice = int(choice)
@@ -50,18 +52,28 @@ async def main():
     # Select a device
     selected_device = await select_device(devices)
     if selected_device:
-        ip = selected_device["ip"]  # Get the IP address of the selected device
-        device = MaxSmartDevice(ip)  # Create an instance of MaxSmartDevice
+        # Create device with protocol and serial from discovery
+        ip = selected_device["ip"]
+        protocol = selected_device.get("protocol", "http")
+        serial = selected_device.get("sn", "")
+
+        print(f"\n📱 Selected device: {selected_device['name']}")
+        print(f"   IP: {ip}")
+        print(f"   Protocol: {protocol}")
+        print(f"   MAC: {selected_device.get('mac', 'Unknown')}")
+        print(f"   Serial: {serial}")
+
+        device = MaxSmartDevice(ip, protocol=protocol, sn=serial)
+
         # Retrieve the current port names
         try:
+            await device.initialize_device()
             port_mapping = await device.retrieve_port_names()  # Get a dictionary of port names asynchronously
-            print("Port Names:")
+            print("\n🔌 Port Names:")
             for port, name in port_mapping.items():
-                print(f"{port}: {name}")  # Output each port name
+                print(f"   {port}: {name}")  # Output each port name
         except Exception as e:
-            print(f"Error retrieving port names: {str(e)}")
-        finally:
-            await device.close()  # Ensure to close the session
+            print(f"❌ Error retrieving port names: {str(e)}")
 
 if __name__ == "__main__":
     asyncio.run(main())  # Execute the main function using asyncio

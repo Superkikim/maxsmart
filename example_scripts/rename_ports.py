@@ -118,8 +118,17 @@ async def main():
     if not selected_device:
         return
 
-    # Create an instance of MaxSmartDevice with the selected device's IP
-    device = MaxSmartDevice(selected_device['ip'])
+    # Create device with protocol and serial from discovery
+    protocol = selected_device.get("protocol", "http")
+    serial = selected_device.get("sn", "")
+
+    print(f"\n📱 Selected device: {selected_device['name']}")
+    print(f"   IP: {selected_device['ip']}")
+    print(f"   Protocol: {protocol}")
+    print(f"   MAC: {selected_device.get('mac', 'Unknown')}")
+    print(f"   Serial: {serial}")
+
+    device = MaxSmartDevice(selected_device['ip'], protocol=protocol, sn=serial)
     await device.initialize_device()  # Ensure the device is initialized after instantiation
 
     # Debug: Check if version was properly set

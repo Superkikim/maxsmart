@@ -165,21 +165,30 @@ class MaxSmartDevice(
                 discovery_devices = await MaxSmartDiscovery.discover_maxsmart(ip=self.ip, enhance_with_hardware_ids=False)
                 if discovery_devices:
                     device_info = discovery_devices[0]
-                    self.version = device_info.get("ver", None)
-                    self.name = device_info.get("name", None)
+                    # Only update if not already set (preserve constructor/pre-populated values)
+                    if not self.version:
+                        self.version = device_info.get("ver", None)
+                    if not self.name:
+                        self.name = device_info.get("name", None)
                     # Only update sn if not already provided in constructor (for UDP V3 devices)
                     if not self.sn:
                         self.sn = device_info.get("sn", None)
                 else:
-                    self.version = None
-                    self.name = None
+                    # Only set to None if not already populated
+                    if not self.version:
+                        self.version = None
+                    if not self.name:
+                        self.name = None
                     # Don't overwrite sn if provided in constructor
                     if not self.sn:
                         self.sn = None
             except Exception as e:
                 logging.debug(f"Could not get device info via discovery for {self.ip}: {e}")
-                self.version = None
-                self.name = None
+                # Only set to None if not already populated
+                if not self.version:
+                    self.version = None
+                if not self.name:
+                    self.name = None
                 # Don't overwrite sn if provided in constructor
                 if not self.sn:
                     self.sn = None
