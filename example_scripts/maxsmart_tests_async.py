@@ -575,6 +575,13 @@ async def main():
                             input("\nPress Enter to continue...")
                             continue
 
+                        from maxsmart.const import IN_DEVICE_NAME_VERSION
+                        if selected_strip.version != IN_DEVICE_NAME_VERSION:
+                            print(f"❌ Statistics not available (requires firmware v{IN_DEVICE_NAME_VERSION}; current: {selected_strip.version or 'Unknown'})")
+                            print("   Available features: 1) Port control, 2) Master control, 3) Real-time consumption")
+                            input("\nPress Enter to continue...")
+                            continue
+
                         try:
                             print("Displaying statistics and graphs...")
 
@@ -601,7 +608,7 @@ async def main():
                                 plot_chandelle_diagram(port_mapping, monthly_data, 'monthly', firmware_version)
                             else:
                                 print("No monthly data available")
-                        
+
                             input("\nPress Enter to continue...")  # Pause before returning to menu
 
                         except Exception as e:
@@ -621,6 +628,13 @@ async def main():
                         if selected_strip.protocol != 'http':
                             print("❌ Raw statistics are only available on HTTP devices")
                             print("   UDP V3 devices support real-time data only (option 3)")
+                            input("\nPress Enter to continue...")
+                            continue
+
+                        from maxsmart.const import IN_DEVICE_NAME_VERSION
+                        if selected_strip.version != IN_DEVICE_NAME_VERSION:
+                            print(f"❌ Raw statistics not available (requires firmware v{IN_DEVICE_NAME_VERSION}; current: {selected_strip.version or 'Unknown'})")
+                            print("   Available features: 1) Port control, 2) Master control, 3) Real-time consumption")
                             input("\nPress Enter to continue...")
                             continue
 
