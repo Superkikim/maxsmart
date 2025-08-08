@@ -83,6 +83,102 @@ def print_device_summary(devices: List[Dict[str, Any]]):
     print()
 
 
+async def detect_device_protocol_debug(ip, sn):
+    """Detect protocol with detailed debug output."""
+    print(f"\n🔍 PROTOCOL DETECTION DEBUG for {ip}")
+    print("=" * 50)
+
+    http_works = False
+    udp_works = False
+
+    # Test HTTP protocol (single attempt)
+    print(f"📤 Sending HTTP command 511 (1/1) to {ip}:80")
+    try:
+        import aiohttp
+        url = f"http://{ip}/?cmd=511"
+        timeout = aiohttp.ClientTimeout(total=2.0)
+
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(url) as response:
+                print(f"📥 HTTP Response: Status {response.status}")
+                if response.status == 200:
+                    content = await response.text()
+                    print(f"📄 HTTP Content: {content[:100]}...")
+                    try:
+                        import json
+                        json_data = json.loads(content)
+                        if "data" in json_data:
+                            http_works = True
+                            print(f"✅ HTTP Reply => Valid JSON with 'data' field")
+                        else:
+                            print(f"⚠️ HTTP Reply => JSON but no 'data' field")
+                    except json.JSONDecodeError:
+                        print(f"❌ HTTP Reply => Invalid JSON")
+                else:
+                    print(f"❌ HTTP Reply => Status {response.status}")
+    except Exception as e:
+        print(f"❌ No reply on HTTP: {type(e).__name__}: {e}")
+
+    if not http_works:
+        print(f"🔄 HTTP failed, trying UDP V3...")
+
+    # Test UDP V3 protocol
+    if sn:
+        print(f"📤 Sending UDP V3 command 90 to {ip}:8888")
+        try:
+            import socket
+            import json
+            from maxsmart.const import UDP_PORT
+
+            payload = {"sn": sn, "cmd": 90}
+            message = f"V3{json.dumps(payload, separators=(',', ':'))}"
+            print(f"📨 UDP Message: {message}")
+
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.settimeout(2.0)
+            sock.sendto(message.encode('utf-8'), (ip, UDP_PORT))
+
+            data, addr = sock.recvfrom(1024)
+            response_text = data.decode('utf-8')
+            sock.close()
+
+            print(f"📥 UDP Response: {response_text}")
+
+            # Parse UDP V3 response (remove V3 prefix)
+            json_text = response_text[2:] if response_text.startswith("V3") else response_text
+            response = json.loads(json_text)
+
+            print(f"📄 UDP Parsed: {response}")
+
+            # Check for UDP V3 support (response 90 with code 200)
+            if (response.get("response") == 90 and response.get("code") == 200):
+                udp_works = True
+                print(f"✅ UDP Reply => Valid response 90, code 200")
+            else:
+                print(f"⚠️ UDP Reply => response={response.get('response')}, code={response.get('code')}")
+        except Exception as e:
+            print(f"❌ No reply on UDP: {type(e).__name__}: {e}")
+    else:
+        print(f"⚠️ No serial number available for UDP V3 test")
+
+    # Return protocol support - ONLY http or udp_v3
+    print("=" * 50)
+    if http_works and udp_works:
+        result = "http"  # Prefer HTTP for dual protocol devices
+        print(f"🎯 DETECTION RESULT: {result} (dual protocol, HTTP preferred)")
+    elif http_works:
+        result = "http"
+        print(f"🎯 DETECTION RESULT: {result} (HTTP only)")
+    elif udp_works:
+        result = "udp_v3"
+        print(f"🎯 DETECTION RESULT: {result} (UDP V3 only)")
+    else:
+        result = "unknown"
+        print(f"🎯 DETECTION RESULT: {result} (no protocol detected)")
+
+    print(f"🏁 Protocol detection complete for {ip}\n")
+    return result
+
 async def test_device_capabilities(device: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """
     Test device capabilities using protocol transparency (v2.1.0).
@@ -96,16 +192,17 @@ async def test_device_capabilities(device: Dict[str, Any]) -> Optional[Dict[str,
     from maxsmart import MaxSmartDevice
 
     try:
-        # Detect protocol based on firmware
-        firmware = device.get('ver', '')
-        if firmware.startswith('5.'):
-            protocol = 'udp_v3'
+        # Use REAL protocol detection with debug
+        ip = device['ip']
+        sn = device.get('sn', '')
+        protocol = await detect_device_protocol_debug(ip, sn)
+
+        if protocol == 'udp_v3':
             test_name = "udp_v3 get_data()"
         else:
-            protocol = 'http'
             test_name = "HTTP get_device_identifiers()"
 
-        logger.info(f"📡 Testing {test_name} on {device['name']} ({device['ip']}) - FW {firmware}...")
+        logger.info(f"📡 Testing {test_name} on {device['name']} ({device['ip']}) - Protocol: {protocol}")
 
         # Create device with detected protocol
         test_device = MaxSmartDevice(device['ip'], protocol=protocol)
