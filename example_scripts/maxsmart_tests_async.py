@@ -104,25 +104,19 @@ async def detect_device_protocol(ip, sn):
 
             # Check for UDP V3 support (response 90 with code 200)
             if (response.get("response") == 90 and response.get("code") == 200):
-                # Check if it has full data (newer firmware) or just basic response
-                if ("data" in response and
-                    "watt" in response["data"] and
-                    "switch" in response["data"]):
-                    udp_works = "UDP_V3_FULL"  # Full UDP V3 with data
-                else:
-                    udp_works = "UDP_V3_BASIC"  # Basic UDP V3 response
+                udp_works = True
         except:
             pass
 
-    # Return protocol support
+    # Return protocol support - ONLY http or udp_v3
     if http_works and udp_works:
-        return f"HTTP+{udp_works}"  # Dual protocol support!
+        return "http"  # Prefer HTTP for dual protocol devices
     elif http_works:
-        return "HTTP"
+        return "http"
     elif udp_works:
-        return udp_works  # Return the specific UDP V3 type
+        return "udp_v3"
     else:
-        return "Unknown"
+        return "unknown"
 
 async def select_device(devices):
     """Allow the user to select a specific device with protocol detection and table format."""
@@ -549,12 +543,10 @@ async def main():
             # Create device with already detected protocol
             detected_protocol = selected_device["detected_protocol"]
             protocol_param = None
-            if detected_protocol == "HTTP":
+            if detected_protocol == "http":
                 protocol_param = "http"
-            elif detected_protocol in ["UDP V3", "UDP_V3_FULL", "UDP_V3_BASIC"]:
+            elif detected_protocol == "udp_v3":
                 protocol_param = "udp_v3"
-            elif detected_protocol.startswith("HTTP+UDP"):
-                protocol_param = "http"  # Prefer HTTP for dual protocol devices
             else:
                 # Unknown protocol - try UDP V3 first for firmware 5.xx+
                 firmware = selected_device.get("ver", "")
@@ -562,7 +554,7 @@ async def main():
                     protocol_param = "udp_v3"  # Firmware 5.xx+ is usually UDP V3
                 else:
                     protocol_param = "http"    # Default to HTTP for older firmware
-                print(f"⚠️ Unknown protocol '{detected_protocol}' - defaulting to {protocol_param.upper()} based on firmware {firmware}")
+                print(f"⚠️ Unknown protocol '{detected_protocol}' - defaulting to {protocol_param} based on firmware {firmware}")
 
             selected_strip = MaxSmartDevice(selected_device["ip"], protocol=protocol_param)
             await selected_strip.initialize_device()  # Initialize with pre-detected protocol

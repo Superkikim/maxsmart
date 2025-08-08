@@ -7,7 +7,7 @@ This script discovers MaxSmart devices on the network with protocol detection
 and executes appropriate commands based on device capabilities.
 
 Features:
-- Automatic protocol detection (HTTP vs UDP V3)
+- Automatic protocol detection (http vs udp_v3)
 - Firmware-aware command execution
 - Protocol transparency demonstration
 
@@ -97,7 +97,7 @@ async def test_device_capabilities(device: Dict[str, Any]) -> Optional[Dict[str,
         firmware = device.get('ver', '')
         if firmware.startswith('5.'):
             protocol = 'udp_v3'
-            test_name = "UDP V3 get_data()"
+            test_name = "udp_v3 get_data()"
         else:
             protocol = 'http'
             test_name = "HTTP get_device_identifiers()"
@@ -110,13 +110,13 @@ async def test_device_capabilities(device: Dict[str, Any]) -> Optional[Dict[str,
 
         # Test appropriate capability based on protocol
         if protocol == 'udp_v3':
-            # Test UDP V3 capability
+            # Test udp_v3 capability
             data = await test_device.get_data()
             result = {
                 'device_sn': device['sn'],
                 'device_name': device['name'],
                 'device_ip': device['ip'],
-                'protocol': 'UDP V3',
+                'protocol': 'udp_v3',
                 'test_result': f"get_data() returned {len(data.get('watt', []))} ports",
                 'success': len(data.get('watt', [])) > 0
             }
@@ -127,7 +127,7 @@ async def test_device_capabilities(device: Dict[str, Any]) -> Optional[Dict[str,
                 'device_sn': device['sn'],
                 'device_name': device['name'],
                 'device_ip': device['ip'],
-                'protocol': 'HTTP',
+                'protocol': 'http',
                 'test_result': f"Hardware IDs: CPU={hw_ids.get('cpuid', 'N/A')[:8]}...",
                 'success': bool(hw_ids.get('cpuid'))
             }
