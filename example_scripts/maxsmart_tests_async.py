@@ -575,11 +575,12 @@ async def main():
                             input("\nPress Enter to continue...")
                             continue
 
-                        print("Displaying statistics and graphs...")
+                        try:
+                            print("Displaying statistics and graphs...")
 
-                        # Hourly data
-                        print("Displaying last 24 hours wattage for each port")
-                        hourly_data, hourly_date_info = await retrieve_hourly_data(selected_strip)
+                            # Hourly data
+                            print("Displaying last 24 hours wattage for each port")
+                            hourly_data, hourly_date_info = await retrieve_hourly_data(selected_strip)
                         if hourly_data and hourly_date_info:
                             plot_chandelle_diagram(port_mapping, hourly_data, 'hourly', firmware_version)
                         else:
@@ -601,7 +602,19 @@ async def main():
                         else:
                             print("No monthly data available")
                         
-                        input("\nPress Enter to continue...")  # Pause before returning to menu
+                            input("\nPress Enter to continue...")  # Pause before returning to menu
+
+                        except Exception as e:
+                            # Handle version restriction or other errors cleanly
+                            error_msg = str(e)
+                            if "firmware v" in error_msg:
+                                print(f"\n❌ {error_msg}")
+                                print("   Available features for your device:")
+                                print("   ✅ Port control (options 1-2)")
+                                print("   ✅ Real-time consumption (option 3)")
+                            else:
+                                print(f"\n❌ Error accessing statistics: {error_msg}")
+                            input("\nPress Enter to continue...")
                     
                     elif choice == "5":
                         # Raw statistics data (HTTP only) - module handles version check
@@ -611,8 +624,20 @@ async def main():
                             input("\nPress Enter to continue...")
                             continue
 
-                        await test_data_retrieval(selected_strip)
-                        input("\nPress Enter to continue...")  # Pause before returning to menu
+                        try:
+                            await test_data_retrieval(selected_strip)
+                            input("\nPress Enter to continue...")  # Pause before returning to menu
+                        except Exception as e:
+                            # Handle version restriction or other errors cleanly
+                            error_msg = str(e)
+                            if "firmware v" in error_msg:
+                                print(f"\n❌ {error_msg}")
+                                print("   Available features for your device:")
+                                print("   ✅ Port control (options 1-2)")
+                                print("   ✅ Real-time consumption (option 3)")
+                            else:
+                                print(f"\n❌ Error accessing raw statistics: {error_msg}")
+                            input("\nPress Enter to continue...")
                     
                     elif choice == "6":
                         print("Exiting...")
