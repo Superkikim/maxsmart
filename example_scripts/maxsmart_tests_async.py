@@ -531,9 +531,18 @@ async def main():
             if not await confirm_proceed(selected_device):
                 return
             
-            # Create device with automatic protocol detection
-            selected_strip = MaxSmartDevice(selected_device["ip"])  # Auto-detects HTTP or UDP V3
-            await selected_strip.initialize_device()  # Initialize with detected protocol
+            # Create device with already detected protocol
+            detected_protocol = selected_device["detected_protocol"]
+            protocol_param = None
+            if detected_protocol == "HTTP":
+                protocol_param = "http"
+            elif detected_protocol == "UDP V3":
+                protocol_param = "udp_v3"
+            elif detected_protocol == "HTTP+UDP":
+                protocol_param = "http"  # Prefer HTTP for dual protocol devices
+
+            selected_strip = MaxSmartDevice(selected_device["ip"], protocol=protocol_param)
+            await selected_strip.initialize_device()  # Initialize with pre-detected protocol
 
             # Display protocol and device information
             print(f"\n🔗 Connected to {selected_strip.name or 'Unknown Device'}")
