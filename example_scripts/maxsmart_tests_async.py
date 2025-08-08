@@ -103,13 +103,13 @@ async def confirm_proceed(device_info):
     name = device_info["name"]
     ip = device_info["ip"]
     sn = device_info.get("sn", "Unknown")
-    protocol = device_info.get("detected_protocol", "Unknown")
+    protocol = device_info.get("protocol", "Unknown")
 
     print(f"\n📱 Selected device: {name}")
     print(f"   IP: {ip}")
     print(f"   Protocol: {protocol}")
     print(f"   Serial: {sn}")
-    if protocol == "UDP V3":
+    if protocol == "udp_v3":
         mac = device_info.get("mac", "Unknown")
         print(f"   MAC: {mac}")
 
