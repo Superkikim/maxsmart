@@ -299,7 +299,7 @@ class MaxSmartDiscovery:
                 enhanced_device["mac"] = ""
 
             # Detect protocol (HTTP vs UDP V3)
-            protocol = await self._detect_device_protocol(ip, enhanced_device.get("sn"))
+            protocol = await MaxSmartDiscovery._detect_device_protocol_static(ip, enhanced_device.get("sn"))
             enhanced_device["protocol"] = protocol
             logging.debug(f"Protocol detected for {ip}: {protocol}")
 
@@ -345,7 +345,8 @@ class MaxSmartDiscovery:
             
         return enhanced_devices
 
-    async def _detect_device_protocol(self, ip, sn):
+    @staticmethod
+    async def _detect_device_protocol_static(ip, sn):
         """Detect protocol for a device - tests HTTP first, then UDP V3."""
         import aiohttp
         import socket
