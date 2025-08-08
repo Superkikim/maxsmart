@@ -287,20 +287,31 @@ class MaxSmartDiscovery:
             enhanced_device = device.copy()
             ip = device["ip"]
             
+            # Try to get MAC address first (works for all device types)
+            try:
+                from .utils import get_mac_address_from_ip
+                mac_address = get_mac_address_from_ip(ip)
+                enhanced_device["mac"] = mac_address or ""
+                logging.debug(f"MAC address for {ip}: {mac_address or 'Not found'}")
+            except Exception as e:
+                logging.debug(f"MAC address not available for {ip}: {e}")
+                enhanced_device["mac"] = ""
+
+            # Try to get hardware IDs (only works for HTTP devices)
             try:
                 # Create temporary device instance to fetch essential IDs
                 temp_device = MaxSmartDevice(ip)
                 temp_device._is_temp_device = True  # Mark as temp to avoid circular calls
                 await temp_device.initialize_device()
-                
-                # Get essential identifiers
+
+                # Get essential identifiers (only available for HTTP devices)
                 try:
                     hw_ids = await temp_device.get_device_identifiers()
                     enhanced_device["cpuid"] = hw_ids.get("cpuid", "")
                     enhanced_device["server"] = hw_ids.get("server", "")
-                    
+
                     logging.debug(f"Enhanced device {ip} with CPU ID: {hw_ids.get('cpuid', 'None')[:8]}...")
-                    
+
                 except Exception as e:
                     # Hardware ID fetch not available (normal for UDP V3 devices)
                     if hasattr(temp_device, 'protocol') and temp_device.protocol == 'udp_v3':
@@ -309,25 +320,12 @@ class MaxSmartDiscovery:
                         logging.debug(f"Failed to get hardware IDs for {ip}: {e}")
                     enhanced_device["cpuid"] = ""
                     enhanced_device["server"] = ""
-                
-                # Get MAC address via ARP
-                try:
-                    mac_address = await temp_device.get_mac_address_via_arp()
-                    enhanced_device["mac"] = mac_address or ""
-                    
-                    logging.debug(f"MAC address for {ip}: {mac_address or 'Not found'}")
-                    
-                except Exception as e:
-                    # MAC address fetch may fail (normal for some device types)
-                    logging.debug(f"MAC address not available for {ip}: {e}")
-                    enhanced_device["mac"] = ""
-                    
+
             except Exception as e:
-                # Device initialization failed, use device as-is with empty fields
-                logging.debug(f"Failed to initialize device {ip} for enhancement: {e}")
+                # Device initialization failed (normal for UDP-only devices)
+                logging.debug(f"Device enhancement via HTTP failed for {ip} - likely UDP-only device")
                 enhanced_device["cpuid"] = ""
                 enhanced_device["server"] = ""
-                enhanced_device["mac"] = ""
                 
             finally:
                 # Always cleanup temp device

@@ -483,13 +483,10 @@ class MaxSmartDevice(
         except Exception as e:
             logging.debug(f"UDP V3 protocol test failed for {self.ip}: {e}")
 
-        # Neither protocol works
-        raise MaxSmartConnectionError(
-            user_locale=self.user_locale,
-            error_key="ERROR_NETWORK_ISSUE",
-            ip=self.ip,
-            detail="No supported protocol detected (HTTP or UDP V3)"
-        )
+        # If device responds to discovery but not to protocol tests, default to HTTP
+        # This handles edge cases with older firmware or network issues
+        logging.warning(f"Device {self.ip} responds to discovery but protocol detection failed - defaulting to HTTP")
+        return 'http'
 
     async def _test_http_connectivity(self):
         """
