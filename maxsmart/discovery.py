@@ -298,6 +298,11 @@ class MaxSmartDiscovery:
                 logging.debug(f"MAC address not available for {ip}: {e}")
                 enhanced_device["mac"] = ""
 
+            # Detect protocol (HTTP vs UDP V3)
+            protocol = await self._detect_device_protocol(ip, enhanced_device.get("sn"))
+            enhanced_device["protocol"] = protocol
+            logging.debug(f"Protocol detected for {ip}: {protocol}")
+
             # Try to get hardware IDs (only works for HTTP devices)
             try:
                 # Create temporary device instance to fetch essential IDs
@@ -339,3 +344,54 @@ class MaxSmartDiscovery:
             enhanced_devices.append(enhanced_device)
             
         return enhanced_devices
+
+    async def _detect_device_protocol(self, ip, sn):
+        """Detect protocol for a device - tests HTTP first, then UDP V3."""
+        import aiohttp
+        import socket
+        import json
+        from .const import UDP_PORT
+
+        # Test HTTP protocol (single attempt)
+        try:
+            url = f"http://{ip}/?cmd=511"
+            timeout = aiohttp.ClientTimeout(total=2.0)
+
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(url) as response:
+                    if response.status == 200:
+                        content = await response.text()
+                        try:
+                            json_data = json.loads(content)
+                            if "data" in json_data:
+                                return "http"
+                        except json.JSONDecodeError:
+                            pass
+        except:
+            pass
+
+        # Test UDP V3 protocol if HTTP fails
+        if sn:
+            try:
+                payload = {"sn": sn, "cmd": 90}
+                message = f"V3{json.dumps(payload, separators=(',', ':'))}"
+
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.settimeout(2.0)
+                sock.sendto(message.encode('utf-8'), (ip, UDP_PORT))
+
+                data, addr = sock.recvfrom(1024)
+                response_text = data.decode('utf-8')
+                sock.close()
+
+                # Parse UDP V3 response (remove V3 prefix)
+                json_text = response_text[2:] if response_text.startswith("V3") else response_text
+                response = json.loads(json_text)
+
+                # Check for UDP V3 support (response 90 with code 200)
+                if (response.get("response") == 90 and response.get("code") == 200):
+                    return "udp_v3"
+            except:
+                pass
+
+        return "unknown"
