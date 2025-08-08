@@ -26,13 +26,14 @@ class CommandMixin:
     async def _send_command(self, cmd, params=None, timeout=None, retries=None):
         """
         Send a command to the device with robust error handling and retry logic.
+        Routes to HTTP or UDP V3 based on device protocol.
 
         :param cmd: Command identifier (e.g., 511, 200, 201, 124).
         :param params: Additional parameters for the command (optional).
         :param timeout: Request timeout in seconds (default: 10s).
         :param retries: Number of retry attempts (default: 3).
         :return: Response from the device as JSON.
-        
+
         :raises CommandError: For command validation or execution errors
         :raises MaxSmartConnectionError: For network/connectivity issues
         """
@@ -41,7 +42,7 @@ class CommandMixin:
             timeout = self.DEFAULT_TIMEOUT
         if retries is None:
             retries = self.RETRY_COUNT
-            
+
         # Validate the command
         valid_commands = {
             CMD_GET_DEVICE_DATA,
@@ -59,6 +60,14 @@ class CommandMixin:
                 detail=f"Invalid command {cmd}. Must be one of {', '.join(map(str, valid_commands))}."
             )
 
+        # Route to appropriate protocol
+        if hasattr(self, 'protocol') and self.protocol == 'udp_v3':
+            return await self._send_udp_v3_command(cmd, params, timeout, retries)
+        else:
+            return await self._send_http_command(cmd, params, timeout, retries)
+
+    async def _send_http_command(self, cmd, params=None, timeout=None, retries=None):
+        """Send command via HTTP protocol."""
         # Construct the URL with parameters, if any
         url = f"http://{self.ip}/?cmd={cmd}"
         if params:
@@ -235,4 +244,98 @@ class CommandMixin:
                 "ERROR_NETWORK_ISSUE",
                 ip=self.ip,
                 detail=f"All {retries + 1} attempts failed without specific error"
+            )
+
+    async def _send_udp_v3_command(self, cmd, params=None, timeout=None, retries=None):
+        """Send command via UDP V3 protocol."""
+        import socket
+        import asyncio
+        from ..const import UDP_PORT
+
+        if not hasattr(self, 'sn') or not self.sn:
+            raise CommandError(
+                "ERROR_INVALID_PARAMETERS",
+                self.user_locale,
+                ip=self.ip,
+                detail="Serial number required for UDP V3 commands"
+            )
+
+        last_exception = None
+
+        for attempt in range(retries + 1):
+            try:
+                # Construct UDP V3 message
+                payload = {"sn": self.sn, "cmd": cmd}
+                if params:
+                    payload.update(params)
+
+                message = f"V3{json.dumps(payload, separators=(',', ':'))}"
+
+                # Create UDP socket
+                loop = asyncio.get_event_loop()
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                sock.setblocking(False)
+
+                try:
+                    # Send UDP message
+                    await loop.run_in_executor(
+                        None, sock.sendto, message.encode('utf-8'), (self.ip, UDP_PORT)
+                    )
+
+                    # Set timeout and receive response
+                    sock.settimeout(timeout or self.DEFAULT_TIMEOUT)
+                    data, addr = await loop.run_in_executor(None, sock.recvfrom, 1024)
+
+                    # Parse response
+                    response_text = data.decode('utf-8', errors='replace')
+
+                    # Remove V3 prefix if present
+                    json_text = response_text[2:] if response_text.startswith("V3") else response_text
+                    response_json = json.loads(json_text)
+
+                    # Validate response
+                    if response_json.get("response") == cmd and response_json.get("code") == 200:
+                        return response_json
+                    else:
+                        raise CommandError(
+                            "ERROR_COMMAND_EXECUTION",
+                            self.user_locale,
+                            ip=self.ip,
+                            detail=f"UDP V3 command {cmd} failed: {response_json}"
+                        )
+
+                finally:
+                    sock.close()
+
+            except socket.timeout:
+                last_exception = MaxSmartConnectionError(
+                    self.user_locale,
+                    "ERROR_TIMEOUT_DETAIL",
+                    ip=self.ip,
+                    detail=f"UDP V3 timeout after {timeout or self.DEFAULT_TIMEOUT}s (attempt {attempt + 1}/{retries + 1})"
+                )
+
+            except Exception as e:
+                last_exception = MaxSmartConnectionError(
+                    self.user_locale,
+                    "ERROR_NETWORK_ISSUE",
+                    ip=self.ip,
+                    detail=f"UDP V3 error: {type(e).__name__}: {e} (attempt {attempt + 1}/{retries + 1})"
+                )
+
+            # If this wasn't the last attempt, wait before retrying
+            if attempt < retries:
+                delay = self.RETRY_DELAY * (2 ** attempt)  # Exponential backoff
+                await asyncio.sleep(delay)
+
+        # All retries exhausted
+        if last_exception:
+            raise last_exception
+        else:
+            raise MaxSmartConnectionError(
+                self.user_locale,
+                "ERROR_NETWORK_ISSUE",
+                ip=self.ip,
+                detail=f"All UDP V3 attempts failed"
             )
