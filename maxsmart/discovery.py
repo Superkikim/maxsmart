@@ -302,8 +302,11 @@ class MaxSmartDiscovery:
                     logging.debug(f"Enhanced device {ip} with CPU ID: {hw_ids.get('cpuid', 'None')[:8]}...")
                     
                 except Exception as e:
-                    # Hardware ID fetch failed, use device as-is
-                    logging.debug(f"Failed to get hardware IDs for {ip}: {e}")
+                    # Hardware ID fetch not available (normal for UDP V3 devices)
+                    if hasattr(temp_device, 'protocol') and temp_device.protocol == 'udp_v3':
+                        logging.debug(f"Hardware IDs not available for UDP V3 device {ip} (expected)")
+                    else:
+                        logging.debug(f"Failed to get hardware IDs for {ip}: {e}")
                     enhanced_device["cpuid"] = ""
                     enhanced_device["server"] = ""
                 
@@ -315,7 +318,8 @@ class MaxSmartDiscovery:
                     logging.debug(f"MAC address for {ip}: {mac_address or 'Not found'}")
                     
                 except Exception as e:
-                    logging.debug(f"Failed to get MAC address for {ip}: {e}")
+                    # MAC address fetch may fail (normal for some device types)
+                    logging.debug(f"MAC address not available for {ip}: {e}")
                     enhanced_device["mac"] = ""
                     
             except Exception as e:
