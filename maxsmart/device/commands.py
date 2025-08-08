@@ -39,7 +39,7 @@ class CommandMixin:
         """
         # Check if command requires specific firmware version
         from ..const import IN_DEVICE_NAME_VERSION
-        statistics_commands = [201, 124, 510]  # Commands that require specific firmware
+        statistics_commands = [201, 510]  # Commands that require specific firmware (exclude 124 - hardware IDs)
 
         if cmd in statistics_commands:
             if not self.version or self.version != IN_DEVICE_NAME_VERSION:
