@@ -290,6 +290,7 @@ class MaxSmartDiscovery:
             # Try to get MAC address first (works for all device types)
             try:
                 from .utils import get_mac_address_from_ip
+                # get_mac_address_from_ip is not async
                 mac_address = get_mac_address_from_ip(ip)
                 enhanced_device["mac"] = mac_address or ""
                 logging.debug(f"MAC address for {ip}: {mac_address or 'Not found'}")

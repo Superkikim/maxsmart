@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
 """
-MaxSmart Device Discovery Tool
-=============================
+MaxSmart Device Discovery Tool v2.1.0
+=====================================
 
-This script discovers MaxSmart devices on the network and executes command 124
-on each discovered device for detailed information.
+This script discovers MaxSmart devices on the network with protocol detection
+and executes appropriate commands based on device capabilities.
+
+Features:
+- Automatic protocol detection (HTTP vs UDP V3)
+- Firmware-aware command execution
+- Protocol transparency demonstration
 
 Usage:
-    python3 maxsmart_discovery.py [IP_ADDRESS]
-    
+    python3 test_discovery_async.py [IP_ADDRESS]
+
 Examples:
-    python3 maxsmart_discovery.py                    # Broadcast discovery
-    python3 maxsmart_discovery.py 192.168.1.100     # Target specific device
+    python3 test_discovery_async.py                    # Broadcast discovery
+    python3 test_discovery_async.py 192.168.1.100     # Target specific device
 """
 
 import asyncio
@@ -75,55 +80,64 @@ def print_device_summary(devices: List[Dict[str, Any]]):
     print()
 
 
-async def execute_command_124(device: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+async def test_device_capabilities(device: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """
-    Execute command 124 on a specific device via HTTP request.
-    
+    Test device capabilities using protocol transparency (v2.1.0).
+
     Args:
         device: Device information dictionary
-        
+
     Returns:
-        Command result or None if failed
+        Test result or None if failed
     """
-    import aiohttp
-    import asyncio
-    
+    from maxsmart import MaxSmartDevice
+
     try:
-        logger.info(f"📡 Executing command 124 on {device['name']} ({device['ip']})...")
-        
-        # Make actual HTTP request to the device
-        url = f"http://{device['ip']}/?cmd=124"
-        timeout = aiohttp.ClientTimeout(total=10)
-        
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.get(url) as response:
-                if response.status == 200:
-                    response_text = await response.text()
-                    
-                    # Parse JSON response
-                    import json
-                    cmd124_response = json.loads(response_text)
-                    
-                    # Add device context for table display
-                    result = {
-                        'device_sn': device['sn'],
-                        'device_name': device['name'],
-                        'device_ip': device['ip'],
-                        'command_response': cmd124_response,
-                        'success': cmd124_response.get('code') == 200
-                    }
-                    
-                    logger.info(f"✅ Command 124 completed for {device['name']}")
-                    return result
-                else:
-                    logger.error(f"❌ HTTP {response.status} from {device['name']}")
-                    return None
-        
-    except asyncio.TimeoutError:
-        logger.error(f"❌ Timeout executing command 124 on {device['name']}")
-        return None
+        # Detect protocol based on firmware
+        firmware = device.get('ver', '')
+        if firmware.startswith('5.'):
+            protocol = 'udp_v3'
+            test_name = "UDP V3 get_data()"
+        else:
+            protocol = 'http'
+            test_name = "HTTP get_device_identifiers()"
+
+        logger.info(f"📡 Testing {test_name} on {device['name']} ({device['ip']}) - FW {firmware}...")
+
+        # Create device with detected protocol
+        test_device = MaxSmartDevice(device['ip'], protocol=protocol)
+        await test_device.initialize_device()
+
+        # Test appropriate capability based on protocol
+        if protocol == 'udp_v3':
+            # Test UDP V3 capability
+            data = await test_device.get_data()
+            result = {
+                'device_sn': device['sn'],
+                'device_name': device['name'],
+                'device_ip': device['ip'],
+                'protocol': 'UDP V3',
+                'test_result': f"get_data() returned {len(data.get('watt', []))} ports",
+                'success': len(data.get('watt', [])) > 0
+            }
+        else:
+            # Test HTTP capability
+            hw_ids = await test_device.get_device_identifiers()
+            result = {
+                'device_sn': device['sn'],
+                'device_name': device['name'],
+                'device_ip': device['ip'],
+                'protocol': 'HTTP',
+                'test_result': f"Hardware IDs: CPU={hw_ids.get('cpuid', 'N/A')[:8]}...",
+                'success': bool(hw_ids.get('cpuid'))
+            }
+
+        await test_device.close()
+        logger.info(f"✅ {test_name} completed for {device['name']}")
+        return result
+
     except Exception as e:
-        logger.error(f"❌ Failed to execute command 124 on {device['name']}: {e}")
+        logger.error(f"❌ Failed to test {device['name']}: {e}")
         return None
 
 
@@ -140,10 +154,10 @@ async def process_devices(devices: List[Dict[str, Any]]) -> List[Dict[str, Any]]
     if not devices:
         return []
     
-    print(f"🔄 Executing command 124 on {len(devices)} device(s)...\n")
-    
-    # Execute command 124 on all devices concurrently
-    tasks = [execute_command_124(device) for device in devices]
+    print(f"🔄 Testing capabilities on {len(devices)} device(s)...\n")
+
+    # Test device capabilities concurrently
+    tasks = [test_device_capabilities(device) for device in devices]
     results = await asyncio.gather(*tasks, return_exceptions=True)
     
     # Filter out None results and exceptions
