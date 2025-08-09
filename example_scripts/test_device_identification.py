@@ -33,9 +33,9 @@ def print_table_header():
         f"{'IP':<15} "
         f"{'FW':<5} "
         f"{'Serial Number':<20} "
-        f"{'CPU ID':<26} "
         f"{'MAC (ARP)':<18} "
-        f"{'Server':<20}"
+        f"{'Protocol':<10} "
+        f"{'Ports':<5}"
     )
     print(header)
     print_separator("-")
@@ -48,27 +48,22 @@ def print_device_row(device_info):
     sn = device_info.get('sn', 'N/A')[:19]
     
     # Extract simplified identifiers
-    cpuid = device_info.get('cpuid', 'Not available')
-    if cpuid and cpuid != 'Not available':
-        cpuid = str(cpuid)[:25]
-    
     mac = device_info.get('mac', 'Not available')
     if mac and mac != 'Not available':
         mac = str(mac)[:17]
-    
-    server = device_info.get('server', 'Not available')
-    if server and server != 'Not available':
-        server = str(server)[:19]
-    
+
+    protocol = device_info.get('protocol', 'unknown')
+    ports = device_info.get('nr_of_ports', 6)
+
     # Print row
     row = (
         f"{name:<15} "
         f"{ip:<15} "
         f"{firmware:<5} "
         f"{sn:<20} "
-        f"{cpuid:<26} "
         f"{mac:<18} "
-        f"{server:<20}"
+        f"{protocol:<10} "
+        f"{ports:<5}"
     )
     print(row)
 
@@ -85,11 +80,11 @@ def print_detailed_view(device_info):
     print(f"Serial Number: {device_info.get('sn', 'Unknown')}")
     print()
     
-    # Essential identifiers
-    print(f"🎯 ESSENTIAL IDENTIFIERS:")
-    print(f"   CPU ID: {device_info.get('cpuid', 'Not available')}")
-    print(f"   MAC Address: {device_info.get('mac', 'Not available')}")
-    print(f"   Cloud Server: {device_info.get('server', 'Not available')}")
+    # Network identifiers
+    print(f"🎯 NETWORK IDENTIFIERS:")
+    print(f"   MAC Address (ARP): {device_info.get('mac', 'Not available')}")
+    print(f"   Protocol: {device_info.get('protocol', 'unknown')}")
+    print(f"   Ports: {device_info.get('nr_of_ports', 6)}")
     print()
     
     # Port information
@@ -156,17 +151,13 @@ async def test_all_devices():
         
         # Statistics
         total_devices = len(devices)
-        devices_with_cpuid = sum(1 for d in devices if d.get('cpuid'))
         devices_with_mac = sum(1 for d in devices if d.get('mac'))
-        devices_with_server = sum(1 for d in devices if d.get('server'))
-        
+
         print()
-        print("📊 IDENTIFICATION STATISTICS")
+        print("📊 IDENTIFICATION STATISTICS (Simplified)")
         print_separator("-", 50)
         print(f"Total devices: {total_devices}")
-        print(f"With CPU ID: {devices_with_cpuid} ({100*devices_with_cpuid//total_devices if total_devices > 0 else 0}%)")
         print(f"With MAC address: {devices_with_mac} ({100*devices_with_mac//total_devices if total_devices > 0 else 0}%)")
-        print(f"With cloud server: {devices_with_server} ({100*devices_with_server//total_devices if total_devices > 0 else 0}%)")
         print()
         
         # Ask for detailed view
@@ -229,15 +220,6 @@ async def test_specific_device(ip_address):
         device.port_count = port_count  # Set port count from discovery
         await device.initialize_device()
         
-        # Test hardware identifiers method
-        try:
-            hw_ids = await device.get_device_identifiers()
-            print(f"   Hardware IDs via device method:")
-            print(f"     CPU ID: {hw_ids.get('cpuid', 'Not available')}")
-            print(f"     Server: {hw_ids.get('server', 'Not available')}")
-        except Exception as e:
-            print(f"   ❌ Hardware ID method failed: {e}")
-            
         # Test MAC via ARP method
         try:
             mac_arp = await device.get_mac_address_via_arp()

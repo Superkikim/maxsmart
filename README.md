@@ -144,7 +144,7 @@ print(f"Protocol: {device.protocol}")      # Shows 'http' or 'udp_v3'
 | Statistics | ✅ | ❌ | `get_statistics()` HTTP only |
 | Port Naming | ✅ | ❌ | `change_port_name()` HTTP only |
 | Device Time | ✅ | ❌ | `get_device_time()` HTTP only |
-| Hardware IDs | ✅ | ❌ | `get_device_identifiers()` HTTP only |
+
 
 ### Manual Protocol Selection
 ```python
@@ -171,10 +171,9 @@ for device in devices:
     print(f"IP: {device['ip']}")
     print(f"Serial: {device['sn']}")
     print(f"Firmware: {device['ver']}")
-    print(f"CPU ID: {device['cpuid']}")
-    print(f"MAC: {device['mac']}")
-    print(f"Server: {device['server']}")
-    print(f"Ports: {len(device['pname'])} configured")
+    print(f"MAC: {device.get('mac', 'N/A')}")
+    print(f"Protocol: {device.get('protocol', 'unknown')}")
+    print(f"Ports: {device.get('nr_of_ports', 6)}")
 ```
 
 ### Essential Discovery Format
@@ -187,7 +186,6 @@ The module now returns a clean, essential format:
     "pname": ["TV", "Lamp", ...],       # Port names (empty for newer firmware)
     "ip": "192.168.1.100",              # IP address
     "ver": "1.30",                      # Firmware version
-    "cpuid": "30FFD105424D373755530243", # CPU unique identifier
     "mac": "AA:BB:CC:DD:EE:FF",         # MAC address via ARP
     "server": "www.maxsmart.ch"         # Cloud server endpoint
 }
@@ -208,17 +206,12 @@ devices = await MaxSmartDiscovery.discover_maxsmart(
 
 ## 🆔 Device Identification
 
-### Essential Identifiers
+### Network Identifiers
 ```python
 device = MaxSmartDevice('192.168.1.100')
 await device.initialize_device()
 
-# Get essential hardware identifiers
-hw_ids = await device.get_device_identifiers()
-print(f"CPU ID: {hw_ids.get('cpuid', 'Not available')}")
-print(f"Cloud Server: {hw_ids.get('server', 'Not available')}")
-
-# Get MAC address via ARP
+# Get MAC address via ARP (best effort)
 mac_address = await device.get_mac_address_via_arp()
 print(f"ARP MAC: {mac_address}")
 ```

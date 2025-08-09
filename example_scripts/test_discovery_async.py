@@ -103,7 +103,7 @@ async def test_device_capabilities(device: Dict[str, Any]) -> Optional[Dict[str,
         if protocol == 'udp_v3':
             test_name = "udp_v3 get_data()"
         else:
-            test_name = "HTTP get_device_identifiers()"
+            test_name = "HTTP basic capability"
 
         logger.info(f"📡 Testing {test_name} on {device['name']} ({device['ip']}) - Protocol: {protocol}")
 
@@ -126,16 +126,17 @@ async def test_device_capabilities(device: Dict[str, Any]) -> Optional[Dict[str,
                 'success': len(data.get('watt', [])) > 0
             }
         else:
-            # Test HTTP capability
-            hw_ids = await test_device.get_device_identifiers()
+            # Test HTTP capability: get basic device data
+            data = await test_device.get_data()  # Should work for HTTP too
+            port_count = len(data.get('watt', [])) if isinstance(data, dict) else 0
             result = {
                 'device_sn': device['sn'],
                 'device_name': device['name'],
                 'device_ip': device['ip'],
                 'protocol': 'http',
                 'mac': device.get('mac', 'N/A'),
-                'test_result': f"Hardware IDs: CPU={hw_ids.get('cpuid', 'N/A')[:8]}...",
-                'success': bool(hw_ids.get('cpuid'))
+                'test_result': f"get_data() returned {port_count} ports",
+                'success': port_count > 0
             }
 
         await test_device.close()
@@ -149,13 +150,13 @@ async def test_device_capabilities(device: Dict[str, Any]) -> Optional[Dict[str,
 
 async def process_devices(devices: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
-    Process all devices with command 124 concurrently.
-    
+    Process all devices concurrently with protocol-appropriate, non-intrusive checks.
+
     Args:
         devices: List of discovered devices
-        
+
     Returns:
-        List of command results
+        List of test results
     """
     if not devices:
         return []

@@ -115,11 +115,31 @@ class MaxSmartDiscovery:
                 seen_ips.add(device["ip"])
                 unique_devices.append(device)
         
-        # Always enhance with essential hardware identifiers
+        # Enhance with essential fields only (no temp devices, no hw_ids)
+        final_devices = []
         if unique_devices:
-            unique_devices = await MaxSmartDiscovery._enhance_with_essential_ids(
-                unique_devices, user_locale
-            )
+            for dev in unique_devices:
+                ip = dev["ip"]
+
+                # MAC via ARP/getmac (best effort)
+                try:
+                    from .utils import get_mac_address_from_ip
+                    dev["mac"] = get_mac_address_from_ip(ip) or ""
+                except Exception as e:
+                    logging.debug(f"MAC address not available for {ip}: {e}")
+                    dev["mac"] = ""
+
+                # Protocol and port count (from 511/90 'switch' array length)
+                protocol, port_count = await MaxSmartDiscovery._detect_device_protocol_static(ip, dev.get("sn"))
+                if protocol is None:
+                    logging.warning(f"Skipping device {ip} - no supported protocol detected")
+                    continue
+                dev["protocol"] = protocol
+                dev["nr_of_ports"] = port_count
+
+                # Do NOT add obsolete fields (cpuid/server)
+                final_devices.append(dev)
+            unique_devices = final_devices
         
         # Log discovery results
         if unique_devices:
@@ -269,89 +289,7 @@ class MaxSmartDiscovery:
         
         return devices
 
-    @staticmethod
-    async def _enhance_with_essential_ids(devices, user_locale):
-        """
-        Enhance device list with essential identifiers only.
-        
-        :param devices: List of devices from UDP discovery
-        :param user_locale: User locale for error messages
-        :return: Enhanced device list with essential IDs
-        """
-        enhanced_devices = []
-        
-        # Import here to avoid circular imports
-        from .device import MaxSmartDevice
-        
-        for device in devices:
-            enhanced_device = device.copy()
-            ip = device["ip"]
-            
-            # Try to get MAC address first (works for all device types)
-            try:
-                from .utils import get_mac_address_from_ip
-                # get_mac_address_from_ip is not async
-                mac_address = get_mac_address_from_ip(ip)
-                enhanced_device["mac"] = mac_address or ""
-                logging.debug(f"MAC address for {ip}: {mac_address or 'Not found'}")
-            except Exception as e:
-                logging.debug(f"MAC address not available for {ip}: {e}")
-                enhanced_device["mac"] = ""
 
-            # Detect protocol and port count (HTTP vs UDP V3)
-            protocol_result = await MaxSmartDiscovery._detect_device_protocol_static(ip, enhanced_device.get("sn"))
-            protocol, port_count = protocol_result
-
-            # Skip devices that don't support any known protocol
-            if protocol is None:
-                logging.warning(f"Skipping device {ip} - no supported protocol detected")
-                continue
-
-            enhanced_device["protocol"] = protocol
-            enhanced_device["nr_of_ports"] = port_count  # NOUVELLE CLÉ RÉTROCOMPATIBLE !
-            logging.debug(f"Protocol detected for {ip}: {protocol}, ports: {port_count}")
-
-            # Try to get hardware IDs (only works for HTTP devices)
-            try:
-                # Create temporary device instance to fetch essential IDs
-                temp_device = MaxSmartDevice(ip)
-                temp_device._is_temp_device = True  # Mark as temp to avoid circular calls
-                await temp_device.initialize_device()
-
-                # Get essential identifiers (only available for HTTP devices)
-                try:
-                    hw_ids = await temp_device.get_device_identifiers()
-                    enhanced_device["cpuid"] = hw_ids.get("cpuid", "")
-                    enhanced_device["server"] = hw_ids.get("server", "")
-
-                    logging.debug(f"Enhanced device {ip} with CPU ID: {hw_ids.get('cpuid', 'None')[:8]}...")
-
-                except Exception as e:
-                    # Hardware ID fetch not available (normal for UDP V3 devices)
-                    if hasattr(temp_device, 'protocol') and temp_device.protocol == 'udp_v3':
-                        logging.debug(f"Hardware IDs not available for UDP V3 device {ip} (expected)")
-                    else:
-                        logging.debug(f"Failed to get hardware IDs for {ip}: {e}")
-                    enhanced_device["cpuid"] = ""
-                    enhanced_device["server"] = ""
-
-            except Exception as e:
-                # Device initialization failed (normal for UDP-only devices)
-                logging.debug(f"Device enhancement via HTTP failed for {ip} - likely UDP-only device")
-                enhanced_device["cpuid"] = ""
-                enhanced_device["server"] = ""
-                
-            finally:
-                # Always cleanup temp device
-                try:
-                    if 'temp_device' in locals():
-                        await temp_device.close()
-                except:
-                    pass
-                    
-            enhanced_devices.append(enhanced_device)
-            
-        return enhanced_devices
 
     @staticmethod
     async def _detect_device_protocol_static(ip, sn):
