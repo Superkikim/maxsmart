@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # maxsmart_tests_async.py
 """
-MaxSmart Protocol Transparency Test Script - v2.1.0
+MaxSmart Protocol Transparency Test Script - v2.1
 
 This script demonstrates the unified API that works seamlessly with both
 HTTP and UDP V3 devices. The same methods work regardless of protocol!

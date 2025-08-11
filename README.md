@@ -1,10 +1,10 @@
 # MaxSmart Python Module
 
-[![PyPI version](https://img.shields.io/badge/PyPI-2.1.0-blue.svg)](https://pypi.org/project/maxsmart/)
+[![PyPI version](https://img.shields.io/badge/PyPI-2.1-blue.svg)](https://pypi.org/project/maxsmart/)
 [![Python versions](https://img.shields.io/badge/Python-3.7%2B-blue.svg)](https://pypi.org/project/maxsmart/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Version:** 2.1.0
+**Version:** 2.1
 
 A comprehensive Python library for controlling Revogi-based Max Hauri MaxSmart PowerStrips and Smart Plugs over local network. Features intelligent auto-detection, adaptive polling, real-time monitoring, and robust async architecture with simplified device identification.
 
@@ -14,11 +14,11 @@ If this plugin helps you, consider supporting its development:
 
 [![Support me on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/nexusplugins)
 
-## 🎯 What's New in v2.1.0
+## 🎯 What's New in v2.1
 
 - **🔄 Protocol Transparency** - Unified API works seamlessly with both HTTP and UDP V3 devices
 - **🤖 Automatic Protocol Detection** - No need to specify protocol, automatically detects HTTP or UDP V3
-- **📡 UDP V3 Support** - Full support for UDP-only devices (commands 20 and 90)
+- **📡 UDP V3 Support** - Full support for UDP-only devices (commands 20 and 90). Tested on Revogi FW 5.11
 - **🛡️ Robust Error Handling** - Same retry logic and timeout handling for both protocols
 - **🎯 Simplified Usage** - Same methods (`turn_on`, `turn_off`, `get_data`) work regardless of device protocol
 - **⚡ Enhanced Performance** - Optimized command routing and reduced overhead

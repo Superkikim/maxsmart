@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MaxSmart Device Discovery Tool v2.1.0
+MaxSmart Device Discovery Tool v2.1
 =====================================
 
 This script discovers MaxSmart devices on the network with protocol detection
@@ -86,7 +86,7 @@ def print_device_summary(devices: List[Dict[str, Any]]):
 
 async def test_device_capabilities(device: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """
-    Test device capabilities using protocol transparency (v2.1.0).
+    Test device capabilities using protocol transparency (v2.1).
 
     Args:
         device: Device information dictionary

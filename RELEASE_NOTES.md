@@ -1,6 +1,6 @@
 # Release Notes
 
-## Version 2.1.0 (Latest) - Protocol Transparency Release
+## Version 2.1 (Latest) - Protocol Transparency Release
 
 ### 🚀 MAJOR NEW FEATURES
 
@@ -11,7 +11,8 @@
 
 #### UDP V3 Protocol Support
 - **Full UDP V3 Implementation**: Support for devices that only respond to UDP commands (20, 90)
-- **Future-Ready**: Prepared for firmware 5.xx+ devices that no longer support HTTP
+- **New**: Adding support for UDP-only devices (Revogi FW 5.x)
+- **Tested**: Successfully tested discovery, state, watts, and on/off on Revogi FW 5.11
 - **Command Routing**: Automatic routing between HTTP and UDP V3 based on device capabilities
 
 #### Enhanced Device Discovery
