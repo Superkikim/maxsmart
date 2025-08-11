@@ -1,10 +1,10 @@
 # MaxSmart Python Module
 
-[![PyPI version](https://img.shields.io/badge/PyPI-2.1-blue.svg)](https://pypi.org/project/maxsmart/)
+[![PyPI version](https://img.shields.io/badge/PyPI-2.1.0-blue.svg)](https://pypi.org/project/maxsmart/)
 [![Python versions](https://img.shields.io/badge/Python-3.7%2B-blue.svg)](https://pypi.org/project/maxsmart/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Version:** 2.1
+**Version:** 2.1.0
 
 A comprehensive Python library for controlling Revogi-based Max Hauri MaxSmart PowerStrips and Smart Plugs over local network. Features intelligent auto-detection, adaptive polling, real-time monitoring, and robust async architecture with simplified device identification.
 
@@ -14,7 +14,7 @@ If this plugin helps you, consider supporting its development:
 
 [![Support me on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/nexusplugins)
 
-## 🎯 What's New in v2.1
+## 🎯 What's New in v2.1.0
 
 - **🔄 Protocol Transparency** - Unified API works seamlessly with both HTTP and UDP V3 devices
 - **🤖 Automatic Protocol Detection** - No need to specify protocol, automatically detects HTTP or UDP V3

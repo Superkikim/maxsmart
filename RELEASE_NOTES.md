@@ -1,6 +1,6 @@
 # Release Notes
 
-## Version 2.1 (Latest) - Protocol Transparency Release
+## Version 2.1.0 (Latest) - Protocol Transparency Release
 
 ### 🚀 MAJOR NEW FEATURES
 
