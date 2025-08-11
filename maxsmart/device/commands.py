@@ -297,13 +297,20 @@ class CommandMixin:
                 # Construct UDP V3 message (map HTTP-style command IDs to UDP V3 equivalents)
                 udp_cmd = cmd
                 try:
-                    # Known mapping: HTTP 511 (CMD_GET_DEVICE_DATA) -> UDP V3 90
+                    # Known mappings:
+                    # - HTTP 511 (CMD_GET_DEVICE_DATA) -> UDP V3 90
+                    # - HTTP 200 (CMD_SET_PORT_STATE) -> UDP V3 20
                     if cmd == CMD_GET_DEVICE_DATA:
                         udp_cmd = 90  # UDP V3 data command
+                    elif cmd == CMD_SET_PORT_STATE:
+                        udp_cmd = 20  # UDP V3 set port state
                 except NameError:
                     pass  # Fallback to original cmd if constants not in scope
 
-                payload = {"sn": self.sn, "cmd": udp_cmd}
+                payload = {"cmd": udp_cmd}
+                # For commands that require SN (e.g., 20), include it if available
+                if enforce_sn and hasattr(self, 'sn') and self.sn:
+                    payload["sn"] = self.sn
                 if params:
                     payload.update(params)
 
