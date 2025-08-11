@@ -283,8 +283,16 @@ class CommandMixin:
 
         for attempt in range(retries + 1):
             try:
-                # Construct UDP V3 message
-                payload = {"sn": self.sn, "cmd": cmd}
+                # Construct UDP V3 message (map HTTP-style command IDs to UDP V3 equivalents)
+                udp_cmd = cmd
+                try:
+                    # Known mapping: HTTP 511 (CMD_GET_DEVICE_DATA) -> UDP V3 90
+                    if cmd == CMD_GET_DEVICE_DATA:
+                        udp_cmd = 90  # UDP V3 data command
+                except NameError:
+                    pass  # Fallback to original cmd if constants not in scope
+
+                payload = {"sn": self.sn, "cmd": udp_cmd}
                 if params:
                     payload.update(params)
 
