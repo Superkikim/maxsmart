@@ -31,7 +31,7 @@ If this plugin helps you, consider supporting its development:
 |-------|-------------|-------------------|---------------|-------------|
 | **Max Hauri** | Power Station (6 ports) | **v1.10, v1.30, v2.11** | [![Full](https://img.shields.io/badge/Support-Full-brightgreen.svg)]() | [![Tested](https://img.shields.io/badge/Tests-Validated-brightgreen.svg)]() |
 | **Max Hauri** | Smart Plug (1 port) | **v1.10, v1.30, v2.11** | [![Full](https://img.shields.io/badge/Support-Full-brightgreen.svg)]() | [![Tested](https://img.shields.io/badge/Tests-Validated-brightgreen.svg)]() |
-| **Revogi** | Power Strip (6 ports) | **v3.36, v3.49** | [![Full](https://img.shields.io/badge/Support-Full-brightgreen.svg)]() | [![Tested](https://img.shields.io/badge/Tests-Validated-brightgreen.svg)]() |
+| **Revogi** | Power Strip (6 ports) | **v3.36, v3.49, v5.11** | [![Full](https://img.shields.io/badge/Support-Full-brightgreen.svg)]() | [![Tested](https://img.shields.io/badge/Tests-Validated-brightgreen.svg)]() |
 | **CoCoSo** | Power Strip (6 ports) | **v1.06** | [![Full](https://img.shields.io/badge/Support-Full-brightgreen.svg)]() | [![Tested](https://img.shields.io/badge/Tests-Validated-brightgreen.svg)]() |
 | **Extel** | Soky Power Strip | Various | [![Compatible](https://img.shields.io/badge/Support-Compatible-yellow.svg)]() | [![Need Testing](https://img.shields.io/badge/Tests-Need%20Volunteers-orange.svg)]() |
 | **MCL** | DOM-PPS06I | Various | [![Compatible](https://img.shields.io/badge/Support-Compatible-yellow.svg)]() | [![Need Testing](https://img.shields.io/badge/Tests-Need%20Volunteers-orange.svg)]() |
