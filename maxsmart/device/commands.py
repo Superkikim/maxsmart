@@ -271,12 +271,23 @@ class CommandMixin:
         import asyncio
         from ..const import UDP_PORT
 
-        if not hasattr(self, 'sn') or not self.sn:
+        # For UDP V3, SN is generally required, but cmd 90 works without SN
+        # Only enforce SN for commands other than 90
+        # Note: mapping from HTTP 511 -> UDP 90 is handled below before payload creation
+        enforce_sn = True  # default
+        if 'CMD_GET_DEVICE_DATA' in globals():
+            try:
+                if cmd == CMD_GET_DEVICE_DATA:
+                    enforce_sn = False  # this will map to 90 and doesn't require SN
+            except NameError:
+                pass
+
+        if enforce_sn and (not hasattr(self, 'sn') or not self.sn):
             raise CommandError(
                 "ERROR_INVALID_PARAMETERS",
                 self.user_locale,
                 ip=self.ip,
-                detail="Serial number required for UDP V3 commands"
+                detail="Serial number required for this UDP V3 command"
             )
 
         last_exception = None
@@ -321,15 +332,16 @@ class CommandMixin:
                     json_text = response_text[2:] if response_text.startswith("V3") else response_text
                     response_json = json.loads(json_text)
 
-                    # Validate response
-                    if response_json.get("response") == cmd and response_json.get("code") == 200:
+                    # Validate response (compare against udp_cmd if we remapped)
+                    expected_response = udp_cmd
+                    if response_json.get("response") == expected_response and response_json.get("code") == 200:
                         return response_json
                     else:
                         raise CommandError(
                             "ERROR_COMMAND_EXECUTION",
                             self.user_locale,
                             ip=self.ip,
-                            detail=f"UDP V3 command {cmd} failed: {response_json}"
+                            detail=f"UDP V3 command {expected_response} failed: {response_json}"
                         )
 
                 finally:
